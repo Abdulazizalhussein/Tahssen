@@ -14,15 +14,28 @@ import { theme } from '../theme'
 import { useAccount } from '../context/AccountContext'
 import { SectionTitle } from '../components/ui'
 
-export default function SettingsScreen() {
-  const { apiKey, setApiKey, balance, formatMoney, resetAccount, lang, toggleLang, t, isRTL } =
-    useAccount()
+export default function SettingsScreen({ navigation }) {
+  const {
+    apiKey,
+    setApiKey,
+    balance,
+    formatMoney,
+    resetAccount,
+    logout,
+    userName,
+    memberSince,
+    lang,
+    toggleLang,
+    t,
+    isRTL,
+  } = useAccount()
   const insets = useSafeAreaInsets()
   const [keyInput, setKeyInput] = useState('')
   const [editing, setEditing] = useState(!apiKey)
   const [saved, setSaved] = useState(false)
 
   const masked = apiKey ? `${apiKey.slice(0, 5)}${'•'.repeat(12)}${apiKey.slice(-4)}` : ''
+  const memberSinceDate = memberSince ? memberSince.slice(0, 10) : ''
 
   const save = async () => {
     await setApiKey(keyInput)
@@ -39,6 +52,21 @@ export default function SettingsScreen() {
     ])
   }
 
+  const confirmSignOut = () => {
+    Alert.alert(t('signOut'), t('confirmSignOut'), [
+      { text: t('cancelTransfer'), style: 'cancel' },
+      {
+        text: t('signOut'),
+        style: 'destructive',
+        onPress: async () => {
+          await logout()
+          const root = navigation.getParent() || navigation
+          root.reset({ index: 0, routes: [{ name: 'Auth' }] })
+        },
+      },
+    ])
+  }
+
   return (
     <ScrollView
       style={styles.screen}
@@ -46,6 +74,20 @@ export default function SettingsScreen() {
       showsVerticalScrollIndicator={false}
     >
       <Text style={[styles.h1, { textAlign: isRTL ? 'right' : 'left' }]}>{t('tabSettings')}</Text>
+
+      <View style={[styles.userCard, isRTL && styles.rtl]}>
+        <View style={styles.avatar}>
+          <Feather name="user" size={24} color={theme.gold} />
+        </View>
+        <View style={{ flex: 1, alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
+          <Text style={styles.userName}>{userName || '—'}</Text>
+          {!!memberSinceDate && (
+            <Text style={styles.userSince}>
+              {t('memberSince')} {memberSinceDate}
+            </Text>
+          )}
+        </View>
+      </View>
 
       <SectionTitle icon="key">{t('apiKey')}</SectionTitle>
       <View style={styles.card}>
@@ -112,6 +154,11 @@ export default function SettingsScreen() {
       <View style={styles.card}>
         <Text style={[styles.aboutText, { textAlign: isRTL ? 'right' : 'left' }]}>{t('aboutText')}</Text>
       </View>
+
+      <TouchableOpacity style={[styles.signOutBtn, isRTL && styles.rtl]} onPress={confirmSignOut} activeOpacity={0.85}>
+        <Feather name="log-out" size={18} color={theme.danger} />
+        <Text style={styles.signOutText}>{t('signOut')}</Text>
+      </TouchableOpacity>
     </ScrollView>
   )
 }
@@ -128,6 +175,27 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.bg },
   rtl: { flexDirection: 'row-reverse' },
   h1: { color: theme.text, fontSize: 26, fontWeight: '800' },
+  userCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: theme.bgCardLight,
+    borderRadius: theme.radiusLg,
+    padding: 18,
+    marginTop: 18,
+    borderWidth: 1,
+    borderColor: theme.border,
+  },
+  avatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: `${theme.gold}22`,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  userName: { color: theme.text, fontSize: 18, fontWeight: '800' },
+  userSince: { color: theme.textMuted, fontSize: 13, marginTop: 3 },
   card: {
     backgroundColor: theme.bgCard,
     borderRadius: theme.radiusLg,
@@ -192,4 +260,17 @@ const styles = StyleSheet.create({
   },
   resetText: { color: theme.danger, fontSize: 15, fontWeight: '700' },
   aboutText: { color: theme.textMuted, fontSize: 14, lineHeight: 23 },
+  signOutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: `${theme.danger}18`,
+    paddingVertical: 16,
+    borderRadius: theme.radius,
+    borderWidth: 1,
+    borderColor: `${theme.danger}40`,
+    marginTop: 28,
+  },
+  signOutText: { color: theme.danger, fontSize: 15, fontWeight: '700' },
 })

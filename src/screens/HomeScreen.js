@@ -23,7 +23,7 @@ function Action({ icon, label, onPress, primary }) {
 
 export default function HomeScreen({ navigation }) {
   const account = useAccount()
-  const { transactions, apiKey, t, isRTL, lang } = account
+  const { transactions, apiKey, userName, t, isRTL, lang } = account
   const insets = useSafeAreaInsets()
   const [status, setStatus] = useState(null)
   const [loadingStatus, setLoadingStatus] = useState(false)
@@ -60,7 +60,9 @@ export default function HomeScreen({ navigation }) {
       <View style={[styles.header, isRTL && styles.rtl]}>
         <View style={isRTL && { alignItems: 'flex-end' }}>
           <Text style={styles.appName}>{t('appName')}</Text>
-          <Text style={styles.tagline}>{t('tagline')}</Text>
+          <Text style={styles.tagline}>
+            {userName ? `${t('greeting')}، ${userName}` : t('tagline')}
+          </Text>
         </View>
         <View style={styles.logo}>
           <MaterialCommunityIcons name="shield-check" size={26} color={theme.gold} />

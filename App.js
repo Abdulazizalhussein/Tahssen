@@ -1,9 +1,9 @@
 import 'react-native-gesture-handler'
 import React from 'react'
-import { View, ActivityIndicator } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
+import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { Feather } from '@expo/vector-icons'
 
@@ -14,8 +14,11 @@ import TransferScreen from './src/screens/TransferScreen'
 import ChatScreen from './src/screens/ChatScreen'
 import AnalyticsScreen from './src/screens/AnalyticsScreen'
 import SettingsScreen from './src/screens/SettingsScreen'
+import SplashScreen from './src/screens/auth/SplashScreen'
+import AuthScreen from './src/screens/auth/AuthScreen'
 
 const Tab = createBottomTabNavigator()
+const RootStack = createNativeStackNavigator()
 
 const navTheme = {
   ...DefaultTheme,
@@ -69,17 +72,13 @@ function Tabs() {
 }
 
 function Root() {
-  const { hydrated } = useAccount()
-  if (!hydrated) {
-    return (
-      <View style={{ flex: 1, backgroundColor: theme.bg, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator size="large" color={theme.gold} />
-      </View>
-    )
-  }
   return (
     <NavigationContainer theme={navTheme}>
-      <Tabs />
+      <RootStack.Navigator screenOptions={{ headerShown: false }}>
+        <RootStack.Screen name="Splash" component={SplashScreen} />
+        <RootStack.Screen name="Auth" component={AuthScreen} />
+        <RootStack.Screen name="Main" component={Tabs} />
+      </RootStack.Navigator>
     </NavigationContainer>
   )
 }

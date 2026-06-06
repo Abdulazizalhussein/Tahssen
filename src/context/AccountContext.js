@@ -2,68 +2,107 @@ import React, { createContext, useContext, useEffect, useMemo, useState, useCall
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as SecureStore from 'expo-secure-store'
 import { STRINGS } from '../i18n'
+import {
+  openDatabase,
+  registerUser,
+  loginUser,
+  getUserByName,
+  getUserById,
+  saveSession,
+  getSession,
+  clearSession,
+  updateBalance,
+  addTransaction,
+  getTransactions,
+  getMonthlySpent,
+  resetUserData,
+} from '../db/database'
 
-const INITIAL = {
-  balance: 45230.0,
-  monthlyBudget: 8500.0,
-  transactions: [],
-}
-
-const STORAGE_KEY = 'tahseen.account.v1'
 const LANG_KEY = 'tahseen.lang.v1'
 const API_KEY_NAME = 'tahseen_openai_key'
 
 const AccountContext = createContext(null)
 
-const sameMonth = (ts) => {
-  const d = new Date(ts)
-  const now = new Date()
-  return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
-}
-
 export function AccountProvider({ children }) {
-  const [balance, setBalance] = useState(INITIAL.balance)
-  const [monthlyBudget] = useState(INITIAL.monthlyBudget)
-  const [transactions, setTransactions] = useState(INITIAL.transactions)
+  const [userId, setUserId] = useState(null)
+  const [userName, setUserName] = useState('')
+  const [memberSince, setMemberSince] = useState('')
+  const [balance, setBalance] = useState(0)
+  const [monthlyBudget, setMonthlyBudget] = useState(8500)
+  const [monthlySpent, setMonthlySpent] = useState(0)
+  const [transactions, setTransactions] = useState([])
   const [apiKey, setApiKeyState] = useState(null)
   const [lang, setLang] = useState('ar')
-  const [hydrated, setHydrated] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+
+  const loadUser = useCallback(async (id) => {
+    const user = await getUserById(id)
+    if (!user) return false
+    const [txs, spent] = await Promise.all([getTransactions(id), getMonthlySpent(id)])
+    setUserId(user.id)
+    setUserName(user.name)
+    setMemberSince(user.created_at || '')
+    setBalance(user.balance)
+    setMonthlyBudget(user.monthly_budget)
+    setTransactions(txs)
+    setMonthlySpent(spent)
+    return true
+  }, [])
 
   useEffect(() => {
     ;(async () => {
       try {
-        const raw = await AsyncStorage.getItem(STORAGE_KEY)
-        if (raw) {
-          const parsed = JSON.parse(raw)
-          if (typeof parsed.balance === 'number') setBalance(parsed.balance)
-          if (Array.isArray(parsed.transactions)) setTransactions(parsed.transactions)
-        }
+        await openDatabase()
         const storedLang = await AsyncStorage.getItem(LANG_KEY)
         if (storedLang) setLang(storedLang)
+
         const envKey = process.env.EXPO_PUBLIC_OPENAI_KEY
         const savedKey = await SecureStore.getItemAsync(API_KEY_NAME)
         const keyToUse = savedKey || envKey || null
-        if (keyToUse && !savedKey) {
-          await SecureStore.setItemAsync(API_KEY_NAME, keyToUse)
-        }
+        if (keyToUse && !savedKey) await SecureStore.setItemAsync(API_KEY_NAME, keyToUse)
         if (keyToUse) setApiKeyState(keyToUse)
+
+        const session = await getSession()
+        if (session?.user_id) await loadUser(session.user_id)
       } catch (e) {
-        // ignore corrupt storage
+        // start unauthenticated on any failure
       } finally {
-        setHydrated(true)
+        setIsLoading(false)
       }
     })()
-  }, [])
+  }, [loadUser])
 
-  const persist = useCallback(async (nextBalance, nextTx) => {
-    try {
-      await AsyncStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({ balance: nextBalance, transactions: nextTx })
-      )
-    } catch (e) {
-      // ignore
-    }
+  const register = useCallback(
+    async (name, password) => {
+      const existing = await getUserByName(name)
+      if (existing) return { ok: false, error: 'nameTaken' }
+      const id = await registerUser(name, password)
+      await saveSession(id)
+      await loadUser(id)
+      return { ok: true }
+    },
+    [loadUser]
+  )
+
+  const login = useCallback(
+    async (name, password) => {
+      const user = await loginUser(name, password)
+      if (!user) return { ok: false, error: 'invalidCredentials' }
+      await saveSession(user.id)
+      await loadUser(user.id)
+      return { ok: true }
+    },
+    [loadUser]
+  )
+
+  const logout = useCallback(async () => {
+    await clearSession()
+    setUserId(null)
+    setUserName('')
+    setMemberSince('')
+    setBalance(0)
+    setMonthlySpent(0)
+    setTransactions([])
   }, [])
 
   const setApiKey = useCallback(async (key) => {
@@ -85,62 +124,76 @@ export function AccountProvider({ children }) {
     })
   }, [])
 
-  const makeTx = (transfer, blocked) => ({
-    id: `${Date.now()}-${Math.floor(Math.random() * 100000)}`,
-    type: 'transfer',
-    amount: Number(transfer.amount) || 0,
-    beneficiary: transfer.beneficiary || '',
-    iban: transfer.iban || '',
-    reason: transfer.reason || '',
-    riskScore: typeof transfer.riskScore === 'number' ? transfer.riskScore : 0,
-    riskLevel: transfer.riskLevel || 'low',
-    timestamp: Date.now(),
-    blocked: !!blocked,
-  })
+  const refreshMonthlySpent = useCallback(async (id) => {
+    try {
+      const spent = await getMonthlySpent(id)
+      setMonthlySpent(spent)
+    } catch (e) {
+      // ignore
+    }
+  }, [])
 
   const executeTransfer = useCallback(
-    (transfer) => {
-      const tx = makeTx(transfer, false)
-      setTransactions((prev) => {
-        const next = [tx, ...prev]
-        setBalance((b) => {
-          const nb = b - tx.amount
-          persist(nb, next)
-          return nb
-        })
-        return next
-      })
-      return tx
+    async (transfer) => {
+      if (!userId) return null
+      const amount = Number(transfer.amount) || 0
+      const payload = {
+        type: 'transfer',
+        amount,
+        beneficiary: transfer.beneficiary || '',
+        reason: transfer.reason || '',
+        riskScore: typeof transfer.riskScore === 'number' ? transfer.riskScore : 0,
+        riskLevel: transfer.riskLevel || 'low',
+        status: 'completed',
+      }
+      const newBalance = balance - amount
+      try {
+        await addTransaction(userId, payload)
+        await updateBalance(userId, newBalance)
+        const [txs] = await Promise.all([getTransactions(userId), refreshMonthlySpent(userId)])
+        setBalance(newBalance)
+        setTransactions(txs)
+      } catch (e) {
+        // ignore persistence failure
+      }
+      return payload
     },
-    [persist]
+    [userId, balance, refreshMonthlySpent]
   )
 
   const blockTransfer = useCallback(
-    (transfer) => {
-      const tx = makeTx(transfer, true)
-      setTransactions((prev) => {
-        const next = [tx, ...prev]
-        persist(balance, next)
-        return next
-      })
-      return tx
+    async (transfer) => {
+      if (!userId) return null
+      const payload = {
+        type: 'transfer',
+        amount: Number(transfer.amount) || 0,
+        beneficiary: transfer.beneficiary || '',
+        reason: transfer.reason || '',
+        riskScore: typeof transfer.riskScore === 'number' ? transfer.riskScore : 0,
+        riskLevel: transfer.riskLevel || 'low',
+        status: 'blocked',
+      }
+      try {
+        await addTransaction(userId, payload)
+        const txs = await getTransactions(userId)
+        setTransactions(txs)
+      } catch (e) {
+        // ignore
+      }
+      return payload
     },
-    [persist, balance]
+    [userId]
   )
 
-  const resetAccount = useCallback(() => {
-    setBalance(INITIAL.balance)
-    setTransactions([])
-    persist(INITIAL.balance, [])
-  }, [persist])
-
-  const monthlySpent = useMemo(
-    () =>
-      transactions
-        .filter((t) => !t.blocked && sameMonth(t.timestamp))
-        .reduce((sum, t) => sum + t.amount, 0),
-    [transactions]
-  )
+  const resetAccount = useCallback(async () => {
+    if (!userId) return
+    try {
+      await resetUserData(userId)
+      await loadUser(userId)
+    } catch (e) {
+      // ignore
+    }
+  }, [userId, loadUser])
 
   const t = useCallback((key) => STRINGS[lang][key] ?? STRINGS.ar[key] ?? key, [lang])
 
@@ -155,14 +208,22 @@ export function AccountProvider({ children }) {
 
   const value = useMemo(
     () => ({
+      userId,
+      userName,
+      memberSince,
       balance,
       monthlyBudget,
       monthlySpent,
       transactions,
       apiKey,
       lang,
-      hydrated,
+      isLoading,
+      isAuthed: !!userId,
       isRTL: lang === 'ar',
+      register,
+      login,
+      logout,
+      loadUser,
       setApiKey,
       toggleLang,
       executeTransfer,
@@ -172,13 +233,20 @@ export function AccountProvider({ children }) {
       formatMoney,
     }),
     [
+      userId,
+      userName,
+      memberSince,
       balance,
       monthlyBudget,
       monthlySpent,
       transactions,
       apiKey,
       lang,
-      hydrated,
+      isLoading,
+      register,
+      login,
+      logout,
+      loadUser,
       setApiKey,
       toggleLang,
       executeTransfer,
