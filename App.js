@@ -1,63 +1,96 @@
 import 'react-native-gesture-handler'
 import React from 'react'
-import { Text } from 'react-native'
+import { View, ActivityIndicator } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { Feather } from '@expo/vector-icons'
 
-import { colors } from './src/theme'
+import { theme } from './src/theme'
+import { AccountProvider, useAccount } from './src/context/AccountContext'
 import HomeScreen from './src/screens/HomeScreen'
-import FeaturesScreen from './src/screens/FeaturesScreen'
-import HowItWorksScreen from './src/screens/HowItWorksScreen'
-import DemoScreen from './src/screens/DemoScreen'
-import DashboardScreen from './src/screens/DashboardScreen'
+import TransferScreen from './src/screens/TransferScreen'
+import ChatScreen from './src/screens/ChatScreen'
+import AnalyticsScreen from './src/screens/AnalyticsScreen'
+import SettingsScreen from './src/screens/SettingsScreen'
 
 const Tab = createBottomTabNavigator()
 
 const navTheme = {
   ...DefaultTheme,
-  colors: { ...DefaultTheme.colors, background: colors.navy },
+  colors: { ...DefaultTheme.colors, background: theme.bg, card: theme.bgCard, border: theme.border },
 }
 
-const tabIcons = {
-  الرئيسية: '🏠',
-  المميزات: '✨',
-  'كيف يعمل': '⚙️',
-  التجربة: '🧪',
-  'لوحة التحكم': '📋',
+const ICONS = {
+  Home: 'home',
+  Transfer: 'arrow-up-right',
+  Chat: 'message-circle',
+  Analytics: 'bar-chart-2',
+  Settings: 'settings',
+}
+
+function Tabs() {
+  const { t } = useAccount()
+  const labels = {
+    Home: t('tabHome'),
+    Transfer: t('tabTransfer'),
+    Chat: t('tabChat'),
+    Analytics: t('tabAnalytics'),
+    Settings: t('tabSettings'),
+  }
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarActiveTintColor: theme.gold,
+        tabBarInactiveTintColor: theme.textMuted,
+        tabBarLabel: labels[route.name],
+        tabBarStyle: {
+          backgroundColor: theme.bgCard,
+          borderTopColor: theme.border,
+          height: 64,
+          paddingBottom: 10,
+          paddingTop: 8,
+        },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+        tabBarIcon: ({ color, size }) => (
+          <Feather name={ICONS[route.name]} size={size - 2} color={color} />
+        ),
+      })}
+    >
+      <Tab.Screen name="Home" component={HomeScreen} />
+      <Tab.Screen name="Transfer" component={TransferScreen} />
+      <Tab.Screen name="Chat" component={ChatScreen} />
+      <Tab.Screen name="Analytics" component={AnalyticsScreen} />
+      <Tab.Screen name="Settings" component={SettingsScreen} />
+    </Tab.Navigator>
+  )
+}
+
+function Root() {
+  const { hydrated } = useAccount()
+  if (!hydrated) {
+    return (
+      <View style={{ flex: 1, backgroundColor: theme.bg, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color={theme.gold} />
+      </View>
+    )
+  }
+  return (
+    <NavigationContainer theme={navTheme}>
+      <Tabs />
+    </NavigationContainer>
+  )
 }
 
 export default function App() {
   return (
     <SafeAreaProvider>
       <StatusBar style="light" />
-      <NavigationContainer theme={navTheme}>
-        <Tab.Navigator
-          screenOptions={({ route }) => ({
-            headerShown: false,
-            tabBarActiveTintColor: colors.gold,
-            tabBarInactiveTintColor: colors.textMuted,
-            tabBarStyle: {
-              backgroundColor: colors.navyLight,
-              borderTopColor: 'rgba(255,255,255,0.08)',
-              height: 64,
-              paddingBottom: 8,
-              paddingTop: 8,
-            },
-            tabBarLabelStyle: { fontSize: 11, fontWeight: '700' },
-            tabBarIcon: ({ color }) => (
-              <Text style={{ fontSize: 20, color }}>{tabIcons[route.name]}</Text>
-            ),
-          })}
-        >
-          <Tab.Screen name="الرئيسية" component={HomeScreen} />
-          <Tab.Screen name="المميزات" component={FeaturesScreen} />
-          <Tab.Screen name="كيف يعمل" component={HowItWorksScreen} />
-          <Tab.Screen name="التجربة" component={DemoScreen} />
-          <Tab.Screen name="لوحة التحكم" component={DashboardScreen} />
-        </Tab.Navigator>
-      </NavigationContainer>
+      <AccountProvider>
+        <Root />
+      </AccountProvider>
     </SafeAreaProvider>
   )
 }

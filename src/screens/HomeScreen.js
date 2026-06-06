@@ -1,186 +1,163 @@
-import React, { useEffect, useRef, useState } from 'react'
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Animated,
-} from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import { colors } from '../theme'
+import React, { useEffect, useState, useCallback } from 'react'
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons'
+import { theme } from '../theme'
+import { useAccount } from '../context/AccountContext'
+import BalanceCard from '../components/BalanceCard'
+import TransactionItem from '../components/TransactionItem'
+import { SectionTitle } from '../components/ui'
+import { accountStatusLine } from '../agents/chatAgent'
+import { MissingApiKeyError } from '../agents/client'
 
-const badges = ['SAMA', 'PDPL', 'شريعة', 'قابل للتفسير']
+function Action({ icon, label, onPress, primary }) {
+  return (
+    <TouchableOpacity style={styles.action} onPress={onPress} activeOpacity={0.85}>
+      <View style={[styles.actionIcon, primary && { backgroundColor: theme.gold }]}>
+        <Feather name={icon} size={22} color={primary ? theme.bg : theme.gold} />
+      </View>
+      <Text style={styles.actionLabel}>{label}</Text>
+    </TouchableOpacity>
+  )
+}
 
-export default function HomeScreen() {
-  const score = useRef(new Animated.Value(0)).current
-  const [scoreText, setScoreText] = useState(0)
+export default function HomeScreen({ navigation }) {
+  const account = useAccount()
+  const { transactions, apiKey, t, isRTL, lang } = account
+  const insets = useSafeAreaInsets()
+  const [status, setStatus] = useState(null)
+  const [loadingStatus, setLoadingStatus] = useState(false)
+
+  const loadStatus = useCallback(async () => {
+    if (!apiKey) {
+      setStatus(null)
+      return
+    }
+    setLoadingStatus(true)
+    try {
+      const line = await accountStatusLine(apiKey, account)
+      setStatus(line)
+    } catch (e) {
+      setStatus(e instanceof MissingApiKeyError ? null : '')
+    } finally {
+      setLoadingStatus(false)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiKey, transactions.length, lang])
 
   useEffect(() => {
-    const id = score.addListener(({ value }) => setScoreText(Math.round(value)))
-    Animated.timing(score, {
-      toValue: 94,
-      duration: 1800,
-      useNativeDriver: false,
-    }).start()
-    return () => score.removeListener(id)
-  }, [score])
+    loadStatus()
+  }, [loadStatus])
+
+  const recent = transactions.slice(0, 5)
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.logoRow}>
-          <Text style={styles.logoAr}>تحصين</Text>
-          <Text style={styles.logoEn}>TAHSEEN</Text>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={{ padding: 20, paddingTop: insets.top + 16, paddingBottom: 40 }}
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={[styles.header, isRTL && styles.rtl]}>
+        <View style={isRTL && { alignItems: 'flex-end' }}>
+          <Text style={styles.appName}>{t('appName')}</Text>
+          <Text style={styles.tagline}>{t('tagline')}</Text>
         </View>
-
-        <Text style={styles.hero}>حماية مالية استباقية لمصرف الإنماء</Text>
-        <Text style={styles.subtitle}>يمنع الضرر المالي قبل وقوعه</Text>
-
-        <View style={styles.card}>
-          <View style={styles.blockedBadge}>
-            <Text style={styles.blockedText}>تم إيقاف التحويل</Text>
-          </View>
-
-          <View style={styles.scoreRow}>
-            <Text style={styles.scoreValue}>{scoreText}</Text>
-            <Text style={styles.scoreLabel}>درجة الخطر</Text>
-          </View>
-
-          <Animated.View style={styles.barTrack}>
-            <Animated.View
-              style={[
-                styles.barFill,
-                {
-                  width: score.interpolate({
-                    inputRange: [0, 100],
-                    outputRange: ['0%', '100%'],
-                  }),
-                },
-              ]}
-            />
-          </Animated.View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.detailRow}>
-            <Text style={styles.detailValue}>مستفيد جديد</Text>
-            <Text style={styles.detailKey}>المستفيد</Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Text style={[styles.detailValue, { color: colors.gold }]}>9,500 SAR</Text>
-            <Text style={styles.detailKey}>المبلغ</Text>
-          </View>
+        <View style={styles.logo}>
+          <MaterialCommunityIcons name="shield-check" size={26} color={theme.gold} />
         </View>
+      </View>
 
-        <View style={styles.badgeRow}>
-          {badges.map((b) => (
-            <View key={b} style={styles.badge}>
-              <Text style={styles.badgeText}>{b}</Text>
+      <View style={styles.statusBanner}>
+        <Feather name="activity" size={16} color={theme.teal} />
+        {loadingStatus ? (
+          <ActivityIndicator size="small" color={theme.teal} />
+        ) : (
+          <Text style={[styles.statusText, { textAlign: isRTL ? 'right' : 'left' }]}>
+            {status || t('accountHealth')}
+          </Text>
+        )}
+      </View>
+
+      <View style={{ marginTop: 16 }}>
+        <BalanceCard />
+      </View>
+
+      <SectionTitle icon="zap">{t('quickActions')}</SectionTitle>
+      <View style={[styles.actions, isRTL && styles.rtl]}>
+        <Action icon="arrow-up-right" label={t('transfer')} primary onPress={() => navigation.navigate('Transfer')} />
+        <Action icon="message-circle" label={t('chatWithTahseen')} onPress={() => navigation.navigate('Chat')} />
+        <Action icon="bar-chart-2" label={t('analytics')} onPress={() => navigation.navigate('Analytics')} />
+      </View>
+
+      <SectionTitle icon="clock">{t('recentTransactions')}</SectionTitle>
+      {recent.length === 0 ? (
+        <View style={styles.empty}>
+          <Feather name="inbox" size={28} color={theme.textHint} />
+          <Text style={styles.emptyText}>{t('noTransactions')}</Text>
+        </View>
+      ) : (
+        <View style={styles.txCard}>
+          {recent.map((tx, i) => (
+            <View key={tx.id}>
+              <TransactionItem tx={tx} />
+              {i < recent.length - 1 && <View style={styles.sep} />}
             </View>
           ))}
         </View>
-
-        <TouchableOpacity style={styles.cta} activeOpacity={0.85}>
-          <Text style={styles.ctaText}>ابدأ التجربة</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </SafeAreaView>
+      )}
+    </ScrollView>
   )
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.navy },
-  container: { padding: 22, paddingBottom: 40 },
-  logoRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'flex-end',
-    gap: 10,
-    marginBottom: 28,
-  },
-  logoAr: { color: colors.white, fontSize: 26, fontWeight: '800' },
-  logoEn: { color: colors.gold, fontSize: 13, letterSpacing: 3, fontWeight: '700' },
-  hero: {
-    color: colors.white,
-    fontSize: 30,
-    fontWeight: '800',
-    textAlign: 'right',
-    writingDirection: 'rtl',
-    lineHeight: 42,
-  },
-  subtitle: {
-    color: colors.textMuted,
-    fontSize: 16,
-    textAlign: 'right',
-    writingDirection: 'rtl',
-    marginTop: 10,
-    marginBottom: 24,
-  },
-  card: {
-    backgroundColor: colors.cardBg,
-    borderRadius: 20,
-    padding: 20,
+  screen: { flex: 1, backgroundColor: theme.bg },
+  rtl: { flexDirection: 'row-reverse' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  appName: { color: theme.text, fontSize: 26, fontWeight: '800' },
+  tagline: { color: theme.textMuted, fontSize: 13, marginTop: 2 },
+  logo: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: theme.bgCardLight,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: theme.border,
   },
-  blockedBadge: {
-    alignSelf: 'flex-end',
-    backgroundColor: 'rgba(229,62,62,0.15)',
-    borderColor: colors.danger,
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-  },
-  blockedText: { color: colors.danger, fontWeight: '700', writingDirection: 'rtl' },
-  scoreRow: {
+  statusBanner: {
     flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'flex-end',
+    alignItems: 'center',
     gap: 10,
+    backgroundColor: `${theme.teal}14`,
+    borderWidth: 1,
+    borderColor: `${theme.teal}40`,
+    borderRadius: theme.radius,
+    padding: 14,
     marginTop: 18,
   },
-  scoreValue: { color: colors.white, fontSize: 48, fontWeight: '900' },
-  scoreLabel: { color: colors.textMuted, fontSize: 14, writingDirection: 'rtl' },
-  barTrack: {
-    height: 10,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 999,
-    overflow: 'hidden',
-    marginTop: 12,
-  },
-  barFill: { height: '100%', backgroundColor: colors.danger, borderRadius: 999 },
-  divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.08)', marginVertical: 18 },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  detailKey: { color: colors.textMuted, fontSize: 15, writingDirection: 'rtl' },
-  detailValue: { color: colors.white, fontSize: 15, fontWeight: '700', writingDirection: 'rtl' },
-  badgeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 24,
-    gap: 8,
-  },
-  badge: {
-    flex: 1,
-    backgroundColor: colors.cardBg,
-    borderRadius: 12,
-    paddingVertical: 12,
+  statusText: { color: theme.text, fontSize: 13, flex: 1, lineHeight: 19 },
+  actions: { flexDirection: 'row', gap: 12 },
+  action: { flex: 1, alignItems: 'center', gap: 8 },
+  actionIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 18,
+    backgroundColor: theme.bgCardLight,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(201,162,39,0.3)',
+    borderColor: theme.border,
   },
-  badgeText: { color: colors.gold, fontWeight: '700', fontSize: 13 },
-  cta: {
-    backgroundColor: colors.teal,
-    borderRadius: 16,
-    paddingVertical: 18,
-    alignItems: 'center',
-    marginTop: 28,
+  actionLabel: { color: theme.textMuted, fontSize: 12, fontWeight: '600', textAlign: 'center' },
+  txCard: {
+    backgroundColor: theme.bgCard,
+    borderRadius: theme.radiusLg,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: theme.border,
   },
-  ctaText: { color: colors.white, fontSize: 18, fontWeight: '800', writingDirection: 'rtl' },
+  sep: { height: 1, backgroundColor: theme.border },
+  empty: { alignItems: 'center', gap: 10, paddingVertical: 36 },
+  emptyText: { color: theme.textHint, fontSize: 14 },
 })

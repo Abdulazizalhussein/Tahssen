@@ -1,1 +1,7 @@
-URL: exp://e-gbhn8-anonymous-8081.exp.direct
+Open in Expo Go (SDK 54):
+
+exp://e-gbhn8-anonymous-8081.exp.direct
+
+1. Install "Expo Go" from the App Store
+2. Open the link above on your iPhone (or scan the QR in the terminal)
+3. Go to the Settings tab and paste your OpenAI API key to enable the AI features
