@@ -93,6 +93,7 @@ export default function HomeScreen({ navigation }) {
       <SectionTitle icon="zap">{t('quickActions')}</SectionTitle>
       <View style={[styles.actions, isRTL && styles.rtl]}>
         <Action icon="arrow-up-right" label={t('transfer')} primary onPress={() => navigation.navigate('Transfer')} />
+        <Action icon="users" label={t('beneficiaries')} onPress={() => navigation.navigate('Beneficiaries')} />
         <Action icon="message-circle" label={t('chatWithTahseen')} onPress={() => navigation.navigate('Chat')} />
         <Action icon="bar-chart-2" label={t('analytics')} onPress={() => navigation.navigate('Analytics')} />
       </View>

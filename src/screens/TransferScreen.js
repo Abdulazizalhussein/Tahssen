@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Feather } from '@expo/vector-icons'
@@ -16,10 +17,11 @@ import { theme } from '../theme'
 import { useAccount } from '../context/AccountContext'
 import { NoApiKey, ErrorBox, TypingDots } from '../components/ui'
 import RiskMeter from '../components/RiskMeter'
+import AddBeneficiaryModal from '../components/AddBeneficiaryModal'
 import { getNextQuestion } from '../agents/transferAgent'
 import { analyzeTransfer } from '../agents/fraudAgent'
 
-const STEP = { DETAILS: 0, INTERROGATE: 1, ASSESS: 2, RESULT: 3 }
+const STEP = { PICK: 0, AMOUNT: 1, INTERROGATE: 2, ASSESS: 3, RESULT: 4 }
 
 const REASON_TEXT = {
   lowAmount: 'مبلغ بسيط',
@@ -33,6 +35,7 @@ export default function TransferScreen({ navigation }) {
   const {
     apiKey,
     transactions,
+    beneficiaries,
     balance,
     monthlySpent,
     monthlyBudget,
@@ -44,10 +47,12 @@ export default function TransferScreen({ navigation }) {
   } = account
   const insets = useSafeAreaInsets()
 
-  const [step, setStep] = useState(STEP.DETAILS)
+  const [step, setStep] = useState(STEP.PICK)
   const [beneficiary, setBeneficiary] = useState('')
   const [iban, setIban] = useState('')
   const [amount, setAmount] = useState('')
+  const [search, setSearch] = useState('')
+  const [addModal, setAddModal] = useState(false)
 
   const [messages, setMessages] = useState([]) // {role, content}
   const [answer, setAnswer] = useState('')
@@ -64,10 +69,11 @@ export default function TransferScreen({ navigation }) {
   const isNewBeneficiary = previousTransfers.length === 0
 
   const resetFlow = () => {
-    setStep(STEP.DETAILS)
+    setStep(STEP.PICK)
     setBeneficiary('')
     setIban('')
     setAmount('')
+    setSearch('')
     setMessages([])
     setAnswer('')
     setAssessment(null)
@@ -75,8 +81,26 @@ export default function TransferScreen({ navigation }) {
     setError(null)
   }
 
-  const validDetails =
-    beneficiary.trim().length > 1 && Number(amount) > 0 && Number(amount) <= balance
+  const activeBeneficiaries = beneficiaries.filter((b) => b.status === 'active')
+  const filteredBeneficiaries = activeBeneficiaries.filter((b) =>
+    b.name.toLowerCase().includes(search.trim().toLowerCase())
+  )
+
+  const pickBeneficiary = (b) => {
+    if (b.status === 'blocked') {
+      Alert.alert(
+        t('blockedBenTitle'),
+        `${b.blockedReason || ''}\n${t('cannotTransferBlocked')}`,
+        [{ text: t('dismiss'), style: 'cancel' }]
+      )
+      return
+    }
+    setBeneficiary(b.name)
+    setIban(b.iban || '')
+    setStep(STEP.AMOUNT)
+  }
+
+  const validAmount = Number(amount) > 0 && Number(amount) <= balance
 
   const runAssessment = useCallback(
     async (history, isPersonallyKnown = false) => {
@@ -211,6 +235,7 @@ export default function TransferScreen({ navigation }) {
       iban,
       amount: Number(amount),
       reason: messages.find((m) => m.role === 'user')?.content || '',
+      reasoning: assessment?.reasoning || (assessment?.redFlags && assessment.redFlags[0]) || '',
       riskScore: assessment?.riskScore ?? 0,
       riskLevel: assessment?.riskLevel ?? 'low',
     }
@@ -219,7 +244,7 @@ export default function TransferScreen({ navigation }) {
     setStep(STEP.RESULT)
   }
 
-  if (!apiKey && step === STEP.DETAILS) {
+  if (!apiKey && step === STEP.PICK) {
     return (
       <Screen insets={insets}>
         <Header t={t} step={step} isRTL={isRTL} />
@@ -237,23 +262,50 @@ export default function TransferScreen({ navigation }) {
       <Screen insets={insets} scrollRef={scrollRef}>
         <Header t={t} step={step} isRTL={isRTL} />
 
-        {step === STEP.DETAILS && (
+        {step === STEP.PICK && (
           <View>
-            <Field
-              label={t('beneficiaryName')}
-              value={beneficiary}
-              onChangeText={setBeneficiary}
-              icon="user"
-              isRTL={isRTL}
-            />
-            <Field
-              label={t('iban')}
-              value={iban}
-              onChangeText={setIban}
-              icon="credit-card"
-              autoCapitalize="characters"
-              isRTL={isRTL}
-            />
+            <View style={[styles.searchWrap, isRTL && styles.rtl]}>
+              <Feather name="search" size={18} color={theme.textMuted} />
+              <TextInput
+                style={[styles.searchInput, { textAlign: isRTL ? 'right' : 'left' }]}
+                placeholder={t('searchBeneficiary')}
+                placeholderTextColor={theme.textHint}
+                value={search}
+                onChangeText={setSearch}
+              />
+            </View>
+
+            <Text style={[styles.listLabel, { textAlign: isRTL ? 'right' : 'left' }]}>
+              {t('activeBeneficiaries')}
+            </Text>
+
+            {filteredBeneficiaries.length === 0 ? (
+              <View style={styles.pickEmpty}>
+                <Feather name="users" size={28} color={theme.textHint} />
+                <Text style={styles.pickEmptyText}>{t('noActiveBenHint')}</Text>
+              </View>
+            ) : (
+              <View style={{ gap: 10 }}>
+                {filteredBeneficiaries.map((b) => (
+                  <BeneficiaryRow key={b.id} b={b} t={t} isRTL={isRTL} onPress={() => pickBeneficiary(b)} />
+                ))}
+              </View>
+            )}
+
+            <TouchableOpacity style={styles.addNewBtn} onPress={() => setAddModal(true)} activeOpacity={0.85}>
+              <Feather name="plus" size={18} color={theme.teal} />
+              <Text style={styles.addNewText}>{t('addNewBeneficiary')}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {step === STEP.AMOUNT && (
+          <View>
+            <TouchableOpacity style={[styles.changeBen, isRTL && styles.rtl]} onPress={() => setStep(STEP.PICK)}>
+              <Feather name={isRTL ? 'arrow-right' : 'arrow-left'} size={16} color={theme.gold} />
+              <Feather name="user" size={15} color={theme.gold} />
+              <Text style={styles.changeBenText}>{beneficiary}</Text>
+            </TouchableOpacity>
             <Field
               label={`${t('amount')} (${t('currency')})`}
               value={amount}
@@ -261,15 +313,16 @@ export default function TransferScreen({ navigation }) {
               icon="dollar-sign"
               keyboardType="numeric"
               isRTL={isRTL}
+              autoFocus
             />
             {Number(amount) > balance && (
               <Text style={styles.warnText}>{t('balance')}: {formatMoney(balance)}</Text>
             )}
             <PrimaryButton
               label={t('proceed')}
-              disabled={!validDetails}
+              disabled={!validAmount}
               onPress={startInterrogation}
-              icon="arrow-right"
+              icon={isRTL ? 'arrow-left' : 'arrow-right'}
             />
           </View>
         )}
@@ -350,7 +403,25 @@ export default function TransferScreen({ navigation }) {
           </TouchableOpacity>
         </View>
       )}
+
+      <AddBeneficiaryModal visible={addModal} onClose={() => setAddModal(false)} />
     </KeyboardAvoidingView>
+  )
+}
+
+function BeneficiaryRow({ b, t, isRTL, onPress }) {
+  const meta = b.transferCount ? `×${b.transferCount} ${t('benTransfers')}` : t('benNew')
+  return (
+    <TouchableOpacity style={[styles.benRow, isRTL && styles.rtl]} onPress={onPress} activeOpacity={0.85}>
+      <View style={styles.benAvatar}>
+        <Feather name="user" size={18} color={theme.teal} />
+      </View>
+      <View style={{ flex: 1, alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
+        <Text style={styles.benRowName}>{b.name}</Text>
+        <Text style={styles.benRowMeta}>{meta}</Text>
+      </View>
+      <Feather name={isRTL ? 'chevron-left' : 'chevron-right'} size={20} color={theme.textMuted} />
+    </TouchableOpacity>
   )
 }
 
@@ -369,12 +440,12 @@ function Screen({ children, insets, scrollRef }) {
 }
 
 function Header({ t, step, isRTL }) {
-  const titles = [t('transferDetails'), t('intentReview'), t('riskAssessment'), '']
+  const titles = [t('chooseBeneficiary'), t('transferDetails'), t('intentReview'), t('riskAssessment'), '']
   return (
     <View style={{ marginBottom: 18 }}>
       <Text style={[styles.h1, { textAlign: isRTL ? 'right' : 'left' }]}>{t('transfer')}</Text>
       <View style={[styles.steps, isRTL && styles.rtl]}>
-        {[0, 1, 2, 3].map((s) => (
+        {[0, 1, 2, 3, 4].map((s) => (
           <View key={s} style={[styles.stepDot, s <= step && styles.stepDotActive]} />
         ))}
       </View>
@@ -755,6 +826,68 @@ const styles = StyleSheet.create({
   blockBtnText: { color: theme.text, fontSize: 15, fontWeight: '700' },
   riskyBtn: { alignItems: 'center', paddingVertical: 14 },
   riskyBtnText: { color: theme.danger, fontSize: 14, fontWeight: '600' },
+  searchWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: theme.bgCard,
+    borderRadius: theme.radius,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: theme.border,
+    marginBottom: 18,
+  },
+  searchInput: { flex: 1, color: theme.text, fontSize: 15, paddingVertical: 13 },
+  listLabel: { color: theme.textMuted, fontSize: 13, fontWeight: '600', marginBottom: 12 },
+  pickEmpty: { alignItems: 'center', gap: 10, paddingVertical: 30 },
+  pickEmptyText: { color: theme.textHint, fontSize: 14 },
+  benRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: theme.bgCard,
+    borderRadius: theme.radius,
+    padding: 14,
+    borderWidth: 0.5,
+    borderColor: theme.border,
+  },
+  benAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: `${theme.teal}22`,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  benRowName: { color: theme.text, fontSize: 15, fontWeight: '700' },
+  benRowMeta: { color: theme.textMuted, fontSize: 12, marginTop: 3 },
+  addNewBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: `${theme.teal}18`,
+    paddingVertical: 15,
+    borderRadius: theme.radius,
+    borderWidth: 1,
+    borderColor: `${theme.teal}40`,
+    marginTop: 18,
+  },
+  addNewText: { color: theme.teal, fontSize: 15, fontWeight: '700' },
+  changeBen: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    alignSelf: 'flex-start',
+    backgroundColor: theme.bgCard,
+    borderRadius: theme.radius,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: theme.border,
+    marginBottom: 18,
+  },
+  changeBenText: { color: theme.text, fontSize: 14, fontWeight: '700' },
   result: { alignItems: 'center', paddingVertical: 30 },
   resultIcon: {
     width: 96,

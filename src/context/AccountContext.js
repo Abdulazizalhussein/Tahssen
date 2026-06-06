@@ -22,6 +22,11 @@ import {
   deleteFixedExpense,
   updateFixedExpense,
   getTotalFixedExpenses,
+  getBeneficiaries,
+  addBeneficiary as addBeneficiaryDB,
+  blockBeneficiary,
+  unblockBeneficiary,
+  updateBeneficiaryLastTransfer,
 } from '../db/database'
 
 const LANG_KEY = 'tahseen.lang.v1'
@@ -40,6 +45,7 @@ export function AccountProvider({ children }) {
   const [fixedExpenses, setFixedExpenses] = useState([])
   const [totalFixedExpenses, setTotalFixedExpenses] = useState(0)
   const [transactions, setTransactions] = useState([])
+  const [beneficiaries, setBeneficiaries] = useState([])
   const [apiKey, setApiKeyState] = useState(null)
   const [lang, setLang] = useState('ar')
   const [isLoading, setIsLoading] = useState(true)
@@ -47,11 +53,12 @@ export function AccountProvider({ children }) {
   const loadUser = useCallback(async (id) => {
     const user = await getUserById(id)
     if (!user) return false
-    const [txs, spent, expenses, totalFixed] = await Promise.all([
+    const [txs, spent, expenses, totalFixed, bens] = await Promise.all([
       getTransactions(id),
       getMonthlySpent(id),
       getFixedExpenses(id),
       getTotalFixedExpenses(id),
+      getBeneficiaries(id),
     ])
     setUserId(user.id)
     setUserName(user.name)
@@ -62,6 +69,7 @@ export function AccountProvider({ children }) {
     setFixedExpenses(expenses)
     setTotalFixedExpenses(totalFixed)
     setTransactions(txs)
+    setBeneficiaries(bens)
     setMonthlySpent(spent)
     return true
   }, [])
@@ -121,7 +129,42 @@ export function AccountProvider({ children }) {
     setFixedExpenses([])
     setTotalFixedExpenses(0)
     setTransactions([])
+    setBeneficiaries([])
   }, [])
+
+  const refreshBeneficiaries = useCallback(async (id) => {
+    const targetId = id || userId
+    if (!targetId) return
+    const list = await getBeneficiaries(targetId)
+    setBeneficiaries(list)
+  }, [userId])
+
+  const addBeneficiary = useCallback(
+    async ({ name, iban, bank }) => {
+      if (!userId) return
+      await addBeneficiaryDB(userId, { name, iban, bank })
+      await refreshBeneficiaries(userId)
+    },
+    [userId, refreshBeneficiaries]
+  )
+
+  const blockBeneficiaryAction = useCallback(
+    async (name, reason) => {
+      if (!userId) return
+      await blockBeneficiary(userId, name, reason)
+      await refreshBeneficiaries(userId)
+    },
+    [userId, refreshBeneficiaries]
+  )
+
+  const unblockBeneficiaryAction = useCallback(
+    async (id) => {
+      if (!userId) return
+      await unblockBeneficiary(userId, id)
+      await refreshBeneficiaries(userId)
+    },
+    [userId, refreshBeneficiaries]
+  )
 
   const refreshFixedExpenses = useCallback(async (id) => {
     const [expenses, total] = await Promise.all([
@@ -214,15 +257,20 @@ export function AccountProvider({ children }) {
       try {
         await addTransaction(userId, payload)
         await updateBalance(userId, newBalance)
+        if (payload.beneficiary) {
+          await addBeneficiaryDB(userId, { name: payload.beneficiary })
+          await updateBeneficiaryLastTransfer(userId, payload.beneficiary)
+        }
         const [txs] = await Promise.all([getTransactions(userId), refreshMonthlySpent(userId)])
         setBalance(newBalance)
         setTransactions(txs)
+        await refreshBeneficiaries(userId)
       } catch (e) {
         // ignore persistence failure
       }
       return payload
     },
-    [userId, balance, refreshMonthlySpent]
+    [userId, balance, refreshMonthlySpent, refreshBeneficiaries]
   )
 
   const blockTransfer = useCallback(
@@ -239,14 +287,18 @@ export function AccountProvider({ children }) {
       }
       try {
         await addTransaction(userId, payload)
+        if (payload.beneficiary) {
+          await blockBeneficiary(userId, payload.beneficiary, payload.reasoning || payload.reason || 'مؤشرات احتيال مرتفعة')
+        }
         const txs = await getTransactions(userId)
         setTransactions(txs)
+        await refreshBeneficiaries(userId)
       } catch (e) {
         // ignore
       }
       return payload
     },
-    [userId]
+    [userId, refreshBeneficiaries]
   )
 
   const resetAccount = useCallback(async () => {
@@ -285,6 +337,7 @@ export function AccountProvider({ children }) {
       totalFixedExpenses,
       discretionaryBudget,
       transactions,
+      beneficiaries,
       apiKey,
       lang,
       isLoading,
@@ -303,6 +356,10 @@ export function AccountProvider({ children }) {
       addExpense,
       removeExpense,
       editExpense,
+      refreshBeneficiaries,
+      addBeneficiary,
+      blockBeneficiaryAction,
+      unblockBeneficiaryAction,
       t,
       formatMoney,
     }),
@@ -318,6 +375,7 @@ export function AccountProvider({ children }) {
       totalFixedExpenses,
       discretionaryBudget,
       transactions,
+      beneficiaries,
       apiKey,
       lang,
       isLoading,
@@ -334,6 +392,10 @@ export function AccountProvider({ children }) {
       addExpense,
       removeExpense,
       editExpense,
+      refreshBeneficiaries,
+      addBeneficiary,
+      blockBeneficiaryAction,
+      unblockBeneficiaryAction,
       t,
       formatMoney,
     ]

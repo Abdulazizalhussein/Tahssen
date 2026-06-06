@@ -14,6 +14,7 @@ import TransferScreen from './src/screens/TransferScreen'
 import ChatScreen from './src/screens/ChatScreen'
 import AnalyticsScreen from './src/screens/AnalyticsScreen'
 import SettingsScreen from './src/screens/SettingsScreen'
+import BeneficiariesScreen from './src/screens/BeneficiariesScreen'
 import SplashScreen from './src/screens/auth/SplashScreen'
 import AuthScreen from './src/screens/auth/AuthScreen'
 
@@ -80,6 +81,7 @@ function Root() {
         <RootStack.Screen name="Splash" component={SplashScreen} />
         <RootStack.Screen name="Auth" component={AuthScreen} />
         <RootStack.Screen name="Main" component={Tabs} />
+        <RootStack.Screen name="Beneficiaries" component={BeneficiariesScreen} />
       </RootStack.Navigator>
     </NavigationContainer>
   )

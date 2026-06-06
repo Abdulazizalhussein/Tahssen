@@ -47,6 +47,20 @@ export async function openDatabase() {
       user_id INTEGER NOT NULL,
       created_at TEXT DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS beneficiaries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      iban TEXT DEFAULT '',
+      bank TEXT DEFAULT '',
+      status TEXT DEFAULT 'active',
+      blocked_reason TEXT DEFAULT '',
+      added_at TEXT DEFAULT (datetime('now')),
+      last_transfer_at TEXT,
+      transfer_count INTEGER DEFAULT 0,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
   `)
   await migrate()
   return db
@@ -222,4 +236,91 @@ export async function getTotalFixedExpenses(userId) {
     [userId]
   )
   return result?.total || 0
+}
+
+// Beneficiaries
+function mapBeneficiary(row) {
+  const toMs = (s) => (s ? Date.parse(`${s.replace(' ', 'T')}Z`) : null)
+  return {
+    id: String(row.id),
+    name: row.name,
+    iban: row.iban || '',
+    bank: row.bank || '',
+    status: row.status || 'active',
+    blockedReason: row.blocked_reason || '',
+    addedAt: toMs(row.added_at),
+    lastTransferAt: toMs(row.last_transfer_at),
+    transferCount: row.transfer_count || 0,
+  }
+}
+
+export async function getBeneficiaries(userId) {
+  const rows = await db.getAllAsync(
+    'SELECT * FROM beneficiaries WHERE user_id = ? ORDER BY last_transfer_at DESC, added_at DESC',
+    [userId]
+  )
+  return rows.map(mapBeneficiary)
+}
+
+export async function getActiveBeneficiaries(userId) {
+  const rows = await db.getAllAsync(
+    "SELECT * FROM beneficiaries WHERE user_id = ? AND status = 'active' ORDER BY last_transfer_at DESC, added_at DESC",
+    [userId]
+  )
+  return rows.map(mapBeneficiary)
+}
+
+export async function addBeneficiary(userId, { name, iban, bank }) {
+  const existing = await db.getFirstAsync(
+    'SELECT * FROM beneficiaries WHERE user_id = ? AND name = ?',
+    [userId, name.trim()]
+  )
+  if (existing) return mapBeneficiary(existing)
+
+  const result = await db.runAsync(
+    'INSERT INTO beneficiaries (user_id, name, iban, bank) VALUES (?, ?, ?, ?)',
+    [userId, name.trim(), iban || '', bank || '']
+  )
+  return { id: String(result.lastInsertRowId), name: name.trim(), status: 'active' }
+}
+
+export async function blockBeneficiary(userId, name, reason) {
+  const existing = await db.getFirstAsync(
+    'SELECT * FROM beneficiaries WHERE user_id = ? AND name = ?',
+    [userId, name.trim()]
+  )
+  if (!existing) {
+    await db.runAsync(
+      "INSERT INTO beneficiaries (user_id, name, status, blocked_reason) VALUES (?, ?, 'blocked', ?)",
+      [userId, name.trim(), reason || 'تم الحظر بناءً على تحليل المخاطر']
+    )
+  } else {
+    await db.runAsync(
+      "UPDATE beneficiaries SET status = 'blocked', blocked_reason = ? WHERE user_id = ? AND name = ?",
+      [reason || 'تم الحظر بناءً على تحليل المخاطر', userId, name.trim()]
+    )
+  }
+}
+
+export async function isBeneficiaryBlocked(userId, name) {
+  const b = await db.getFirstAsync(
+    'SELECT status FROM beneficiaries WHERE user_id = ? AND name = ?',
+    [userId, name.trim()]
+  )
+  return b?.status === 'blocked'
+}
+
+export async function updateBeneficiaryLastTransfer(userId, name) {
+  await db.runAsync(
+    `UPDATE beneficiaries SET last_transfer_at = datetime('now'), transfer_count = transfer_count + 1
+     WHERE user_id = ? AND name = ?`,
+    [userId, name.trim()]
+  )
+}
+
+export async function unblockBeneficiary(userId, beneficiaryId) {
+  await db.runAsync(
+    "UPDATE beneficiaries SET status = 'active', blocked_reason = '' WHERE id = ? AND user_id = ?",
+    [beneficiaryId, userId]
+  )
 }
