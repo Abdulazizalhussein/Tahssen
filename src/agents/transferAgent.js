@@ -1,85 +1,98 @@
-import { getClient, MODEL } from './client'
+// Smart transfer interrogation — deterministic, fewer questions, clear triggers.
+// Behaves like a compliance officer: approve the moment there's a solid basis,
+// flag immediately on strong fraud signals, otherwise ask at most 1-2 questions.
 
-const SYSTEM = `You are Tahseen, an AI financial protection agent for Alinma Bank.
-The user is sending money to someone they have already said they do NOT personally know
-(not family, friend, or colleague). Your job is to interrogate the PURPOSE of the transfer
-to detect fraud or social-engineering before money leaves their account.
+const KNOWN_SERVICES = [
+  'stc', 'stcpay', 'jawwy', 'جوي', 'mada', 'مدى', 'sadad', 'سداد', 'سدد', 'ماء', 'كهرباء',
+  'إيجار', 'ايجار', 'زين', 'موبايلي', 'أمازون', 'amazon', 'noon', 'نون', 'جاهز', 'hungerstation',
+  'هنقرستيشن', 'جرير', 'اشتراك', 'نتفليكس', 'netflix', 'spotify', 'سبوتيفاي', 'anghami', 'انغامي',
+  'معادن', "ma'aden", 'حكومي', 'وزارة', 'فاتورة كهرباء', 'فاتورة ماء', 'تأمين', 'جامعة', 'مدرسة',
+]
 
-Ask ONE focused question at a time, in Arabic primarily. Probe the purpose: why are they
-sending it, were they asked or pressured to send it, how did they get the IBAN, is there
-any promise of a reward/refund/prize, any urgency or threats.
+const CRYPTO_SIGNALS = [
+  'كريبتو', 'بيتكوين', 'bitcoin', 'crypto', 'عملة رقمية', 'عمله رقميه', 'usdt', 'binance', 'بايننس',
+  'تداول عملات', 'استثمار رقمي', 'ربح سريع',
+]
 
-Gather enough context in 2-3 exchanges, then stop. When you have enough to hand off to the
-risk engine, set "done": true and stop asking questions.
+const SOCIAL_SIGNALS = [
+  'سناب', 'snapchat', 'انستا', 'instagram', 'انستقرام', 'تيك توك', 'tiktok', 'تويتر', 'twitter',
+  'قروب', 'جروب', 'جماعة', 'وسائل التواصل', 'سوشال', 'من النت', 'من الانترنت', 'شخص من النت',
+  'تعرفت عليه',
+]
 
-Always respond with ONLY valid JSON: {"question": "<next question or empty>", "done": <boolean>}.`
+const GUARANTEE_SIGNALS = [
+  'فاتورة', 'رقم طلب', 'رقم الطلب', 'رقم الفاتورة', 'invoice', 'receipt', 'order', 'رقم المعاملة',
+  'تتبع', 'tracking', 'عقد', 'contract', '#', 'رمز التحقق', 'confirmation',
+]
 
-export const RELATIONSHIP_QUESTION =
-  'هل تعرف هذا الشخص معرفة شخصية؟ (عائلة، صديق، زميل)'
-
-// Negation / stranger indicators — checked FIRST so "لا أعرفه" (no, I don't know him)
-// is treated as unknown even though it contains the substring "أعرفه".
-const UNKNOWN_RE =
-  /(لا\s*أعرف|لا\s*اعرف|ما\s*أعرف|ما\s*اعرف|غريب|مجهول|don'?t\s*know|do\s*not\s*know|not\s*know|stranger|unknown|\bno\b)/i
-
-// Keywords indicating the beneficiary is personally known to the sender.
-const KNOWN_RE =
-  /(نعم|أعرفه|اعرفه|أعرفها|اعرفها|عائلة|عائلتي|أهل|اهل|صديق|صديقة|قريب|قريبة|أخي|اخي|أختي|اختي|أبي|ابي|أمي|امي|زوج|زوجة|زميل|زميلة|yes|family|friend|colleague|relative|brother|sister|know him|know her|i know|personal)/i
-
-function isKnownAnswer(text) {
-  const trimmed = (text || '').trim()
-  if (!trimmed) return false
-  if (/^لا([\s،.!؟]|$)/.test(trimmed)) return false
-  if (UNKNOWN_RE.test(trimmed)) return false
-  return KNOWN_RE.test(trimmed)
+const hasMatch = (text, list) => {
+  const lower = (text || '').toLowerCase()
+  return list.some((s) => lower.includes(s.toLowerCase()))
 }
 
-export async function nextQuestion(
-  apiKey,
-  { beneficiary, amount, iban, isNewBeneficiary, history = [] }
-) {
-  // The first question is always the relationship question.
-  if (history.length === 0) {
-    return { question: RELATIONSHIP_QUESTION, done: false, isPersonallyKnown: false }
+export const isKnownService = (text) => hasMatch(text, KNOWN_SERVICES)
+export const isCryptoSignal = (text) => hasMatch(text, CRYPTO_SIGNALS)
+export const isSocialMedia = (text) => hasMatch(text, SOCIAL_SIGNALS)
+export const hasGuaranteeSignal = (text) => hasMatch(text, GUARANTEE_SIGNALS)
+
+// Returns the SINGLE next question to ask, or a done verdict with flags for the risk engine.
+export async function getNextQuestion(apiKey, { beneficiary, amount, conversationHistory = [], previousTransfers = [] }) {
+  const amt = Number(amount) || 0
+  const userAnswers = conversationHistory.filter((m) => m.role === 'user').map((m) => m.content)
+  const qCount = conversationHistory.filter((m) => m.role === 'assistant').length
+  const allAnswers = userAnswers.join(' ')
+  const firstAnswer = userAnswers[0] || ''
+
+  // ── Instant approve ───────────────────────────────────────────────
+  if (amt > 0 && amt < 300) {
+    return { done: true, skipRisk: true, riskScore: 8, reasonKey: 'lowAmount' }
+  }
+  if (hasGuaranteeSignal(allAnswers)) {
+    return { done: true, hasGuarantee: true, riskScore: 15 }
+  }
+  if (isKnownService(allAnswers)) {
+    return { done: true, skipRisk: true, riskScore: 12, reasonKey: 'knownService' }
   }
 
-  const userMessages = history.filter((m) => m.role === 'user')
-  const relationshipAnswer = userMessages[0]?.content || ''
-
-  // Right after the user answers the relationship question, branch.
-  if (userMessages.length === 1 && isKnownAnswer(relationshipAnswer)) {
-    return { question: '', done: true, isPersonallyKnown: true }
+  // ── Instant escalation (after at least one answer) ────────────────
+  if (qCount >= 1) {
+    if (isCryptoSignal(allAnswers)) {
+      return { done: true, forceHighRisk: true, riskScore: 95, reasonKey: 'crypto' }
+    }
+    if (isSocialMedia(allAnswers) && amt > 1000) {
+      return { done: true, forceHighRisk: true, riskScore: 88, reasonKey: 'social' }
+    }
   }
 
-  // Unknown recipient → continue full purpose interrogation via the model.
-  const client = getClient(apiKey)
+  // ── Max questions reached → hand off to risk engine ───────────────
+  if (qCount >= 2) return { done: true }
 
-  const messages = [
-    { role: 'system', content: SYSTEM },
-    {
-      role: 'user',
-      content: JSON.stringify({
-        transfer: { beneficiary, amount: Number(amount), iban: iban || null },
-        isNewBeneficiary,
-        relationshipAnswer,
-        conversationSoFar: history,
-        instruction: 'Decide the next purpose question, or set done=true if you have enough context.',
-      }),
-    },
-  ]
-
-  const response = await client.chat.completions.create({
-    model: MODEL,
-    temperature: 0.5,
-    max_tokens: 150,
-    messages,
-    response_format: { type: 'json_object' },
-  })
-
-  const parsed = JSON.parse(response.choices[0].message.content)
-  return {
-    question: typeof parsed.question === 'string' ? parsed.question.trim() : '',
-    done: !!parsed.done,
-    isPersonallyKnown: false,
+  // ── First question: always the purpose ────────────────────────────
+  if (qCount === 0) {
+    return {
+      done: false,
+      question: 'ما هدف هذه التحويلة؟',
+      questionEn: 'What is the purpose of this transfer?',
+    }
   }
+
+  // ── Second question: only if the first answer leaves a real gap ───
+  if (amt > 3000 && !hasGuaranteeSignal(firstAnswer) && firstAnswer.trim().length < 30) {
+    return {
+      done: false,
+      question: 'هل عندك رقم فاتورة أو رقم طلب للتحقق؟',
+      questionEn: 'Do you have an invoice or order number to verify?',
+    }
+  }
+
+  if (isSocialMedia(firstAnswer) && !hasGuaranteeSignal(firstAnswer)) {
+    return {
+      done: false,
+      question: 'من أين جاءك طلب هذه التحويلة؟ (رسالة، مكالمة، تطبيق..)',
+      questionEn: 'Where did this transfer request come from? (message, call, app..)',
+    }
+  }
+
+  // Enough context — proceed to risk scoring.
+  return { done: true }
 }

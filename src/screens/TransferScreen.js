@@ -12,14 +12,21 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Feather } from '@expo/vector-icons'
-import { theme, riskColor } from '../theme'
+import { theme } from '../theme'
 import { useAccount } from '../context/AccountContext'
 import { NoApiKey, ErrorBox, TypingDots } from '../components/ui'
 import RiskMeter from '../components/RiskMeter'
-import { nextQuestion } from '../agents/transferAgent'
+import { getNextQuestion } from '../agents/transferAgent'
 import { analyzeTransfer } from '../agents/fraudAgent'
 
 const STEP = { DETAILS: 0, INTERROGATE: 1, ASSESS: 2, RESULT: 3 }
+
+const REASON_TEXT = {
+  lowAmount: 'مبلغ بسيط',
+  knownService: 'خدمة أو جهة معروفة',
+  crypto: 'مؤشر احتيال: عملة رقمية أو وعود ربح',
+  social: 'مؤشر احتيال: طلب عبر وسائل التواصل الاجتماعي',
+}
 
 export default function TransferScreen({ navigation }) {
   const account = useAccount()
@@ -71,26 +78,6 @@ export default function TransferScreen({ navigation }) {
   const validDetails =
     beneficiary.trim().length > 1 && Number(amount) > 0 && Number(amount) <= balance
 
-  const startInterrogation = useCallback(async () => {
-    setError(null)
-    setStep(STEP.INTERROGATE)
-    setBusy(true)
-    try {
-      const { question } = await nextQuestion(apiKey, {
-        beneficiary,
-        amount,
-        iban,
-        isNewBeneficiary,
-        history: [],
-      })
-      setMessages([{ role: 'assistant', content: question || 'ما سبب هذه التحويلة؟' }])
-    } catch (e) {
-      setError(humanError(e, t))
-    } finally {
-      setBusy(false)
-    }
-  }, [apiKey, beneficiary, amount, iban, isNewBeneficiary, t])
-
   const runAssessment = useCallback(
     async (history, isPersonallyKnown = false) => {
       setStep(STEP.ASSESS)
@@ -121,6 +108,60 @@ export default function TransferScreen({ navigation }) {
     [apiKey, beneficiary, amount, previousTransfers, balance, monthlySpent, monthlyBudget, t]
   )
 
+  // Routes a getNextQuestion result to the right UI branch.
+  const handleQuestionResult = useCallback(
+    async (history, result) => {
+      const reasonText = result.reason || REASON_TEXT[result.reasonKey] || ''
+      if (result.skipRisk) {
+        setAssessment({ approved: true, approvalKind: 'skip', riskScore: result.riskScore ?? 8, reason: reasonText })
+        setStep(STEP.ASSESS)
+        return
+      }
+      if (result.hasGuarantee) {
+        setAssessment({ approved: true, approvalKind: 'guarantee', riskScore: result.riskScore ?? 15 })
+        setStep(STEP.ASSESS)
+        return
+      }
+      if (result.forceHighRisk) {
+        setAssessment({
+          riskScore: result.riskScore ?? 90,
+          riskLevel: 'critical',
+          recommendation: 'block',
+          reasoning: reasonText || 'مؤشرات احتيال مرتفعة.',
+          redFlags: ['نمط احتيال مرتفع'],
+          predictions: ['هذا النمط مطابق لعمليات احتيال موثقة'],
+        })
+        setStep(STEP.ASSESS)
+        return
+      }
+      if (result.done) {
+        await runAssessment(history)
+        return
+      }
+      setMessages([...history, { role: 'assistant', content: result.question }])
+    },
+    [runAssessment]
+  )
+
+  const startInterrogation = useCallback(async () => {
+    setError(null)
+    setStep(STEP.INTERROGATE)
+    setBusy(true)
+    try {
+      const result = await getNextQuestion(apiKey, {
+        beneficiary,
+        amount: Number(amount),
+        conversationHistory: [],
+        previousTransfers,
+      })
+      await handleQuestionResult([], result)
+    } catch (e) {
+      setError(humanError(e, t))
+    } finally {
+      setBusy(false)
+    }
+  }, [apiKey, beneficiary, amount, previousTransfers, handleQuestionResult, t])
+
   const sendAnswer = useCallback(async () => {
     const text = answer.trim()
     if (!text || busy) return
@@ -130,27 +171,20 @@ export default function TransferScreen({ navigation }) {
     setBusy(true)
     setError(null)
     try {
-      const { question, done, isPersonallyKnown } = await nextQuestion(apiKey, {
+      const result = await getNextQuestion(apiKey, {
         beneficiary,
-        amount,
-        iban,
-        isNewBeneficiary,
-        history,
+        amount: Number(amount),
+        conversationHistory: history,
+        previousTransfers,
       })
-      if (isPersonallyKnown) {
-        await runAssessment(history, true)
-      } else if (done || !question) {
-        await runAssessment(history)
-      } else {
-        setMessages([...history, { role: 'assistant', content: question }])
-      }
+      await handleQuestionResult(history, result)
     } catch (e) {
       setError(humanError(e, t))
     } finally {
       setBusy(false)
       requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }))
     }
-  }, [answer, busy, messages, apiKey, beneficiary, amount, iban, isNewBeneficiary, runAssessment, t])
+  }, [answer, busy, messages, apiKey, beneficiary, amount, previousTransfers, handleQuestionResult, t])
 
   const confirm = () => {
     const payload = {
@@ -259,6 +293,8 @@ export default function TransferScreen({ navigation }) {
                 <Text style={styles.assessLoadingText}>{t('analyzing')}</Text>
                 {error && <ErrorBox message={error} />}
               </View>
+            ) : assessment.approved ? (
+              <ApprovedView kind={assessment.approvalKind} reason={assessment.reason} onConfirm={confirm} />
             ) : assessment.isPersonallyKnown ? (
               <KnownPersonView t={t} onConfirm={confirm} />
             ) : (
@@ -406,15 +442,22 @@ function ChatLine({ role, content, isRTL }) {
   )
 }
 
+function riskBand(score) {
+  if (score >= 80) return { label: 'خطر مرتفع جداً — احتمال احتيال', color: '#D93025' }
+  if (score >= 61) return { label: 'مخاطر عالية — راجع قبل المتابعة', color: '#E8650A' }
+  if (score >= 30) return { label: 'توجد بعض الملاحظات', color: '#F5A623' }
+  return { label: 'التحويل يبدو طبيعياً', color: '#00857A' }
+}
+
 function AssessmentView({ assessment, t, isRTL, onConfirm, onBlock }) {
-  const color = riskColor(assessment.riskLevel)
+  const { label, color } = riskBand(assessment.riskScore)
   const safe = assessment.recommendation === 'allow'
   return (
     <View>
       <View style={styles.meterWrap}>
         <RiskMeter score={assessment.riskScore} label={t('riskScore')} />
         <View style={[styles.levelPill, { backgroundColor: `${color}22`, borderColor: color }]}>
-          <Text style={[styles.levelText, { color }]}>{assessment.riskLevel.toUpperCase()}</Text>
+          <Text style={[styles.levelText, { color }]}>{label}</Text>
         </View>
       </View>
 
@@ -481,6 +524,27 @@ function KnownPersonView({ t, onConfirm }) {
       <TouchableOpacity style={styles.safeBtn} onPress={onConfirm} activeOpacity={0.85}>
         <Feather name="check-circle" size={18} color={theme.bg} />
         <Text style={styles.safeBtnText}>{t('confirmTransfer')}</Text>
+      </TouchableOpacity>
+    </View>
+  )
+}
+
+function ApprovedView({ kind, reason, onConfirm }) {
+  const title = kind === 'guarantee' ? 'تم التحقق — فاتورة مؤكدة ✓' : 'تم القبول'
+  return (
+    <View style={styles.knownWrap}>
+      <View style={[styles.knownIcon, { backgroundColor: `${theme.teal}22` }]}>
+        <Feather name="check-circle" size={48} color={theme.teal} />
+      </View>
+      <Text style={styles.knownTitle}>{title}</Text>
+      {kind === 'skip' && !!reason && <Text style={styles.approvedSubtitle}>{reason}</Text>}
+      <TouchableOpacity
+        style={[styles.safeBtn, { backgroundColor: theme.teal }]}
+        onPress={onConfirm}
+        activeOpacity={0.85}
+      >
+        <Feather name="check-circle" size={18} color={theme.bg} />
+        <Text style={styles.safeBtnText}>تأكيد التحويل</Text>
       </TouchableOpacity>
     </View>
   )
@@ -648,6 +712,13 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginBottom: 24,
     textAlign: 'center',
+  },
+  approvedSubtitle: {
+    color: theme.textMuted,
+    fontSize: 15,
+    textAlign: 'center',
+    marginTop: -12,
+    marginBottom: 24,
   },
   safeBtn: {
     flexDirection: 'row',
