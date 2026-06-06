@@ -113,7 +113,7 @@ export default function TransferScreen({ navigation }) {
     async (history, result) => {
       const reasonText = result.reason || REASON_TEXT[result.reasonKey] || ''
       if (result.skipRisk) {
-        setAssessment({ approved: true, approvalKind: 'skip', riskScore: result.riskScore ?? 8, reason: reasonText })
+        setAssessment({ approved: true, approvalKind: 'skip', riskScore: result.riskScore ?? 8, reasonKey: result.reasonKey })
         setStep(STEP.ASSESS)
         return
       }
@@ -294,7 +294,7 @@ export default function TransferScreen({ navigation }) {
                 {error && <ErrorBox message={error} />}
               </View>
             ) : assessment.approved ? (
-              <ApprovedView kind={assessment.approvalKind} reason={assessment.reason} onConfirm={confirm} />
+              <ApprovedView kind={assessment.approvalKind} reasonKey={assessment.reasonKey} t={t} onConfirm={confirm} />
             ) : assessment.isPersonallyKnown ? (
               <KnownPersonView t={t} onConfirm={confirm} />
             ) : (
@@ -443,14 +443,16 @@ function ChatLine({ role, content, isRTL }) {
 }
 
 function riskBand(score) {
-  if (score >= 80) return { label: 'خطر مرتفع جداً — احتمال احتيال', color: '#D93025' }
-  if (score >= 61) return { label: 'مخاطر عالية — راجع قبل المتابعة', color: '#E8650A' }
-  if (score >= 30) return { label: 'توجد بعض الملاحظات', color: '#F5A623' }
-  return { label: 'التحويل يبدو طبيعياً', color: '#00857A' }
+  if (score >= 80) return { key: 'riskCritical', color: '#D93025' }
+  if (score >= 61) return { key: 'riskHigh', color: '#E8650A' }
+  if (score >= 30) return { key: 'riskNotes', color: '#F5A623' }
+  return { key: 'riskNormal', color: '#00857A' }
 }
 
 function AssessmentView({ assessment, t, isRTL, onConfirm, onBlock }) {
-  const { label, color } = riskBand(assessment.riskScore)
+  const band = riskBand(assessment.riskScore)
+  const color = band.color
+  const label = t(band.key)
   const safe = assessment.recommendation === 'allow'
   return (
     <View>
@@ -529,22 +531,24 @@ function KnownPersonView({ t, onConfirm }) {
   )
 }
 
-function ApprovedView({ kind, reason, onConfirm }) {
-  const title = kind === 'guarantee' ? 'تم التحقق — فاتورة مؤكدة ✓' : 'تم القبول'
+function ApprovedView({ kind, reasonKey, t, onConfirm }) {
+  const title = kind === 'guarantee' ? t('verifiedInvoice') : t('approvedTitle')
+  const subtitle =
+    kind === 'skip' ? t(reasonKey === 'knownService' ? 'approvedKnownService' : 'approvedLowAmount') : ''
   return (
     <View style={styles.knownWrap}>
       <View style={[styles.knownIcon, { backgroundColor: `${theme.teal}22` }]}>
         <Feather name="check-circle" size={48} color={theme.teal} />
       </View>
       <Text style={styles.knownTitle}>{title}</Text>
-      {kind === 'skip' && !!reason && <Text style={styles.approvedSubtitle}>{reason}</Text>}
+      {!!subtitle && <Text style={styles.approvedSubtitle}>{subtitle}</Text>}
       <TouchableOpacity
         style={[styles.safeBtn, { backgroundColor: theme.teal }]}
         onPress={onConfirm}
         activeOpacity={0.85}
       >
         <Feather name="check-circle" size={18} color={theme.bg} />
-        <Text style={styles.safeBtnText}>تأكيد التحويل</Text>
+        <Text style={styles.safeBtnText}>{t('confirmTransfer')}</Text>
       </TouchableOpacity>
     </View>
   )
