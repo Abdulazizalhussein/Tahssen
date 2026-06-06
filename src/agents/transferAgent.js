@@ -116,7 +116,17 @@ function beneficiaryIsInstitution(name) {
 }
 
 // ── Main export ───────────────────────────────────────────────────
-export async function getNextQuestion(apiKey, { beneficiary, amount, conversationHistory }) {
+export async function getNextQuestion(apiKey, { beneficiary, amount, conversationHistory, previousTransfers }) {
+  // ── KNOWN BENEFICIARY: transferred before → approve immediately ──
+  if (previousTransfers && previousTransfers.length > 0) {
+    return {
+      done: true,
+      skipRisk: true,
+      riskScore: 5,
+      reason: `مستفيد معروف — ${previousTransfers.length} حوالة سابقة`
+    };
+  }
+
   const answers = conversationHistory.filter(m => m.role === 'user').map(m => m.content).join(' ');
   const qCount  = conversationHistory.filter(m => m.role === 'assistant').length;
   const isInstitution = beneficiaryIsInstitution(beneficiary || '');
