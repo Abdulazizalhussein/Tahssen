@@ -1,156 +1,246 @@
-// ─────────────────────────────────────────────
-//  TAHSEEN — Transfer Intelligence Engine v5
-//  Decision tree: never rush to judgment
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+//  TAHSEEN — Transfer Intelligence v6
+//  Known person = instant approve. Unknown/store = smart questions.
+// ─────────────────────────────────────────────────────────────────
 
-// ── Classifier lists ──────────────────────────
-const INSTITUTION_SIGNALS = [
-  'شركة','مؤسسة','مجموعة','مطعم','صيدلية','بقالة','سوبرماركت','محل','متجر',
-  'مدرسة','جامعة','مستشفى','عيادة','مكتب','شركه','ltd','co.','corp','inc',
-  'llc','ذ.م.م','company','group','store','shop','restaurant','pharmacy',
-  'stc','zain','mobily','jawwy','sadad','mada','وزارة','هيئة','بلدية','أمانة',
-  'aramco','sabic','saudia','flyadeal','flynas','نقل','شحن','delivery','توصيل'
-]
+// ── Known Relationship Signals ────────────────────────────────────
+// Any mention of these = the user knows this person personally → approve
+const KNOWN_PERSON_SIGNALS = [
+  // Parents
+  'ابوي','أبوي','ابي','أبي','والدي','ابوه','أبوه',
+  'امي','أمي','والدتي','امها','أمها','ماما','بابا',
+  // Siblings
+  'أخوي','اخوي','أخي','اخي','أختي','اختي','أخواتي',
+  // Extended family
+  'عمي','خالي','عمتي','خالتي','جدي','جدتي',
+  'ابن عمي','ابن خالي','بنت عمي','بنت خالي',
+  'عمه','خاله','قريبي','قريبتي','من أهلي','من اهلي',
+  'أهلي','اهلي','عيلتي','عائلتي','أقاربي',
+  // Spouse/children
+  'زوجتي','زوجي','مرتي','ولدي','بنتي','أبنائي','اولادي',
+  // Friends
+  'صديقي','صديقتي','صاحبي','صاحبتي','رفيقي','رفيقتي',
+  'خلّي','خلي','اصحابي','أصحابي',
+  // Colleagues
+  'زميلي','زميلتي','زميل','زميلة','رسيلي',
+  'موظف عندي','موظفة عندي',
+  // Employees/workers
+  'عاملتي','عاملي','شغالتي','شغالي','سائقي','سائقتي',
+  'عاملة المنزل','عاملة منزلية','خادمتي','خادمي',
+  'شغّال','شغّالة','طباخي','طباختي',
+  // Known person indicators
+  'أعرفه','أعرفها','أعرفهم','معرفتي','أعرفه شخصياً',
+  'معروف عندي','صاحبي','من معارفي','جاري','جارتي',
+  'جيراني','من الحي','زبوني','عميلي',
+];
 
+// ── Physical Store Signals ────────────────────────────────────────
 const PHYSICAL_STORE_SIGNALS = [
-  'زرت','زيارة','ذهبت','كنت فيه','موجود','قريب','شارع','حي','مجمع','مول',
-  'ايكيا','ikea','بن داود','panda','أسواق','carrefour','lulu','danube','دانوب',
-  'extra','اكسترا','jarir','جرير','فتحالله','othaim','العثيم','nesto','نستو'
-]
+  'زرت','زيارة','ذهبت','مررت','راحت','رحت','رحنا',
+  'كنت فيه','موجود','في الشارع','في الحي','قريب',
+  'مجمع','مول','سوق','بلازا','سنتر','center','mall',
+  'إيكيا','ikea','بن داود','باندا','panda','أسواق العثيم','العثيم',
+  'الدانوب','دانوب','danube','لولو','lulu','carrefour','كارفور',
+  'أكسترا','extra','جرير','jarir','السوق','محل قريب',
+  'عندهم فرع','فيه فروع','أقدر أرجع','بإمكاني الرجوع',
+];
 
-const ONLINE_UNVERIFIED_SIGNALS = [
-  'تويتر','سناب','snapchat','انستا','instagram','تيك توك','tiktok',
-  'واتساب','whatsapp','سوشيال','شخص من النت','من الانترنت','من المجموعة',
-  'موقع غير معروف','تطبيق','app جديد','عرض خاص','حصري'
-]
+// ── Trusted Online Platforms ──────────────────────────────────────
+const TRUSTED_ONLINE = [
+  'أمازون','amazon','نون','noon','نمشي','namshi',
+  'جاهز','hungerstation','مرسول','marsool','طلبات','talabat',
+  'كريم','careem','أوبر','uber','نتفليكس','netflix',
+  'spotify','سبوتيفاي','anghami','انغامي','osn','بيإن',
+  'stcpay','stc pay','مدى','mada','سدد','sadad',
+  'تمارا','tamara','تابي','tabby',
+];
 
-const CRYPTO_INVESTMENT_SIGNALS = [
-  'كريبتو','بيتكوين','bitcoin','crypto','usdt','binance','bybit','okx',
-  'عملة رقمية','تداول','ربح','استثمار','عائد','return','profit','forex',
-  'مضاعفة','ضاعف','مضاعفه','ارباح سريعة','ضمان ربح','مضمون'
-]
+// ── Known Services ────────────────────────────────────────────────
+const KNOWN_SERVICES = [
+  'إيجار','ايجار','راتب','أجور','اجور','مصاريف',
+  'كهرباء','ماء','غاز','إنترنت','انترنت','تلفون','هاتف',
+  'مدرسة','جامعة','رسوم','قسط','تأمين','أقساط',
+  'زين','موبايلي','stc','مصرف','بنك','تسوية',
+];
 
-const KNOWN_SAFE_SERVICES = [
-  'كهرباء','ماء','غاز','إيجار','اشتراك','راتب','أجور','تأمين',
-  'نتفليكس','netflix','spotify','سبوتيفاي','anghami','انغامي',
-  'amazon','أمازون','noon','نون','namshi','jarir','جرير',
-  'hungerstation','جاهز','marsool','مرسول','toters','careem','كريم',
-  'saudi post','بريد','dhl','aramex','smsa','سمسا'
-]
+// ── Unverified Online Risk Signals ───────────────────────────────
+const ONLINE_UNVERIFIED = [
+  'موقع ما أعرفه','موقع جديد','تطبيق جديد','تطبيق غير معروف',
+  'من النت','من الانترنت','موقع غريب','لقيته أونلاين',
+  'عرض من الانترنت','من إعلان','من رابط',
+];
 
-const GUARANTEE_SIGNALS = [
-  'فاتورة','رقم طلب','invoice','receipt','order','رقم الطلب',
-  'رمز التحقق','tracking','تتبع','رقم المعاملة','عقد','ايصال','وصل'
-]
+// ── Crypto / Investment Fraud ─────────────────────────────────────
+const CRYPTO_FRAUD = [
+  'كريبتو','بيتكوين','bitcoin','crypto','usdt','binance','bybit',
+  'عملة رقمية','تداول عملات','فوركس','forex',
+  'ربح سريع','ربح ضمان','استثمار مضمون','مضاعفة',
+  'عائد يومي','أرباح يومية','passive income','دخل سلبي',
+];
 
-const URGENCY_SIGNALS = [
-  'لازم الحين','الآن فقط','العرض ينتهي','سريع','ضروري الحين',
-  'أخر فرصة','now or never','مستعجل','urgent','asap'
-]
+// ── Social Media Strangers ────────────────────────────────────────
+const SOCIAL_STRANGERS = [
+  'سناب','snapchat','انستا','instagram','تيك توك','tiktok',
+  'من واتساب جماعة','من قروب','من تويتر','من مجموعة',
+  'شخص تواصل معي','تواصل معي','ارسل لي','راسلني',
+  'من السوشيال','من الشبكات الاجتماعية',
+];
 
-// ── Classifier functions ───────────────────────
-function classify(text, list) {
-  const lower = (text || '').toLowerCase()
-  return list.some((s) => lower.includes(s))
+// ── Urgency / Pressure Signals ────────────────────────────────────
+const URGENCY = [
+  'لازم الحين','الآن فقط','العرض ينتهي','سريع جداً',
+  'ضروري الحين','إلحاح','urgent','asap','last chance',
+  'راح تضيع الفرصة','بكره بتندم','لا تأخر',
+];
+
+// ── Guarantee Signals ─────────────────────────────────────────────
+const GUARANTEE = [
+  'فاتورة','رقم طلب','invoice','receipt','order number',
+  'رقم الفاتورة','رقم المعاملة','عقد','ايصال','وصل',
+  'تتبع','tracking','رمز التحقق','confirmation number',
+];
+
+// ── Helper ────────────────────────────────────────────────────────
+function hit(text, list) {
+  const lower = (text || '').toLowerCase();
+  return list.some(s => lower.includes(s.toLowerCase()));
 }
 
-function classifyBeneficiary(name) {
-  if (classify(name, INSTITUTION_SIGNALS)) return 'institution'
-  // Arabic names typically have 2-4 words, all looking like personal names
-  const words = name.trim().split(/\s+/)
-  if (words.length >= 2 && words.length <= 4) return 'individual'
-  return 'unknown'
+function beneficiaryIsInstitution(name) {
+  const institutionWords = ['شركة','مؤسسة','مجموعة','مطعم','صيدلية','بقالة',
+    'سوبرماركت','محل','متجر','مدرسة','جامعة','مستشفى','عيادة','مكتب',
+    'شركه','ltd','co.','corp','inc','llc','ذ.م.م','company','group',
+    'store','shop','restaurant','pharmacy','bank','مصرف','وزارة','هيئة'];
+  const lower = (name || '').toLowerCase();
+  return institutionWords.some(w => lower.includes(w));
 }
 
-// ── Main decision function ─────────────────────
-export async function getNextQuestion(apiKey, { beneficiary, amount, conversationHistory = [] }) {
-  const userAnswers = conversationHistory.filter((m) => m.role === 'user').map((m) => m.content).join(' ')
-  const qCount = conversationHistory.filter((m) => m.role === 'assistant').length
-  const beneficiaryType = classifyBeneficiary(beneficiary || '')
+// ── Main export ───────────────────────────────────────────────────
+export async function getNextQuestion(apiKey, { beneficiary, amount, conversationHistory }) {
+  const answers = conversationHistory.filter(m => m.role === 'user').map(m => m.content).join(' ');
+  const qCount  = conversationHistory.filter(m => m.role === 'assistant').length;
+  const isInstitution = beneficiaryIsInstitution(beneficiary || '');
 
-  // ── After collecting answers: evaluate ──────
+  // ════════════════════════════════════════════
+  //  AFTER FIRST ANSWER — classify immediately
+  // ════════════════════════════════════════════
   if (qCount >= 1) {
-    const reason = conversationHistory.find((m) => m.role === 'user')?.content || ''
 
-    // INSTANT FLAG: crypto/investment fraud
-    if (classify(userAnswers, CRYPTO_INVESTMENT_SIGNALS)) {
+    // ── INSTANT APPROVE: known person ─────────
+    if (hit(answers, KNOWN_PERSON_SIGNALS)) {
+      return { done: true, isPersonallyKnown: true };
+    }
+
+    // ── INSTANT FLAG: crypto/investment fraud ─
+    if (hit(answers, CRYPTO_FRAUD)) {
       return { done: true, forceHighRisk: true, riskScore: 97,
-        reason: 'مؤشر احتيال: ادعاءات ربح أو عملات رقمية' }
+        reason: 'مؤشر احتيال: وعود استثمار أو عملات رقمية' };
     }
 
-    // INSTANT FLAG: social media stranger + meaningful amount
-    if (classify(userAnswers, ONLINE_UNVERIFIED_SIGNALS) && amount > 500) {
-      return { done: true, forceHighRisk: true, riskScore: 85,
-        reason: 'مؤشر احتيال: طلب عبر وسائل التواصل بدون ضمان' }
+    // ── INSTANT FLAG: social media stranger ───
+    if (hit(answers, SOCIAL_STRANGERS) && amount > 300) {
+      return { done: true, forceHighRisk: true, riskScore: 88,
+        reason: 'مؤشر احتيال: شخص تعرفت عليه عبر وسائل التواصل' };
     }
 
-    // INSTANT APPROVE: known safe service or physical store
-    if (classify(userAnswers, KNOWN_SAFE_SERVICES)) {
-      return { done: true, skipRisk: true, riskScore: 8, reason: 'خدمة معروفة وموثوقة' }
-    }
-    if (classify(userAnswers, PHYSICAL_STORE_SIGNALS)) {
-      return { done: true, skipRisk: true, riskScore: 12, reason: 'محل حضوري — بإمكانك الرجوع إليه' }
+    // ── INSTANT FLAG: urgency/pressure ────────
+    if (hit(answers, URGENCY) && amount > 1000) {
+      return { done: true, forceHighRisk: true, riskScore: 78,
+        reason: 'مؤشر ضغط: طلب مستعجل بدون مبرر واضح' };
     }
 
-    // INSTANT APPROVE: has guarantee
-    if (classify(userAnswers, GUARANTEE_SIGNALS)) {
-      return { done: true, hasGuarantee: true }
+    // ── INSTANT APPROVE: known service ────────
+    if (hit(answers, KNOWN_SERVICES)) {
+      return { done: true, skipRisk: true, riskScore: 8, reason: 'خدمة أو التزام معروف' };
     }
 
-    // INSTANT APPROVE: institution beneficiary + any reason given
-    if (beneficiaryType === 'institution' && reason.length > 5) {
-      return { done: true, skipRisk: true, riskScore: 15, reason: 'جهة مؤسسية مع سبب واضح' }
+    // ── INSTANT APPROVE: trusted online platform
+    if (hit(answers, TRUSTED_ONLINE)) {
+      return { done: true, skipRisk: true, riskScore: 10, reason: 'منصة إلكترونية موثوقة' };
+    }
+
+    // ── INSTANT APPROVE: physical store visit ─
+    if (hit(answers, PHYSICAL_STORE_SIGNALS)) {
+      return { done: true, skipRisk: true, riskScore: 12,
+        reason: 'محل حضوري — بإمكانك الرجوع إليه' };
+    }
+
+    // ── INSTANT APPROVE: has guarantee ────────
+    if (hit(answers, GUARANTEE)) {
+      return { done: true, hasGuarantee: true };
+    }
+
+    // ── INSTANT APPROVE: institution + reason ─
+    if (isInstitution && answers.trim().length > 5) {
+      return { done: true, skipRisk: true, riskScore: 15, reason: 'جهة مؤسسية مع سبب واضح' };
     }
   }
 
-  // ── Small amount: ask purpose once then proceed ─
+  // ════════════════════════════════════════════
+  //  SMALL AMOUNT: ask once then proceed
+  // ════════════════════════════════════════════
   if (amount < 300) {
-    if (qCount === 0) return { done: false, question: 'ما سبب هذه الحوالة؟' }
-    return { done: true, skipRisk: true, riskScore: 10, reason: 'مبلغ بسيط' }
+    if (qCount === 0) return { done: false, question: 'ما سبب هذه الحوالة؟' };
+    return { done: true, skipRisk: true, riskScore: 10, reason: 'مبلغ بسيط' };
   }
 
-  // ── Max 3 questions ─────────────────────────
-  if (qCount >= 3) return { done: true }
+  // ════════════════════════════════════════════
+  //  MAX 3 QUESTIONS
+  // ════════════════════════════════════════════
+  if (qCount >= 3) return { done: true };
 
-  // ── Q1: Always ask purpose first ────────────
+  // ════════════════════════════════════════════
+  //  Q1: Always purpose first — open question
+  // ════════════════════════════════════════════
   if (qCount === 0) {
-    return { done: false, question: 'ما سبب هذه الحوالة؟' }
+    return { done: false, question: 'ما سبب هذه الحوالة؟' };
   }
 
-  // ── Q2: Depends on first answer + context ────
+  // ════════════════════════════════════════════
+  //  Q2: Smart follow-up based on first answer
+  // ════════════════════════════════════════════
   if (qCount === 1) {
-    const firstAnswer = conversationHistory.filter((m) => m.role === 'user')[0]?.content || ''
+    const firstAnswer = (conversationHistory.find(m => m.role === 'user')?.content || '');
 
-    // If beneficiary is individual and amount is high → ask about guarantee
-    if (beneficiaryType === 'individual' && amount > 1000 &&
-        !classify(firstAnswer, GUARANTEE_SIGNALS)) {
-      return { done: false, question: 'هل تملك فاتورة أو شيء يحفظ حقك مع هذا الشخص؟' }
+    // Mentioned a store but unclear if physical or online
+    const mentionedStore = firstAnswer.includes('محل') || firstAnswer.includes('متجر') ||
+      firstAnswer.includes('موقع') || firstAnswer.includes('تطبيق') ||
+      firstAnswer.includes('شراء') || firstAnswer.includes('اشترى');
+
+    if (mentionedStore && !hit(firstAnswer, PHYSICAL_STORE_SIGNALS) &&
+        !hit(firstAnswer, TRUSTED_ONLINE)) {
+      return {
+        done: false,
+        question: 'هل هذا المتجر حضوري تزوره شخصياً، أم تعامل أونلاين فقط؟'
+      };
     }
 
-    // If mentioned online or store but unclear physical/online
-    if (!classify(firstAnswer, PHYSICAL_STORE_SIGNALS) &&
-        (firstAnswer.includes('محل') || firstAnswer.includes('متجر') ||
-         firstAnswer.includes('موقع') || firstAnswer.includes('تطبيق'))) {
-      return { done: false, question: 'هل هذا المحل حضوري تزوره شخصياً أم متجر إلكتروني؟' }
+    // Individual + amount > 1000 + no guarantee yet
+    if (!isInstitution && amount > 1000 && !hit(firstAnswer, GUARANTEE)) {
+      return {
+        done: false,
+        question: 'هل عندك فاتورة أو رقم طلب أو أي شيء يحفظ حقك في هذه المعاملة؟'
+      };
     }
 
-    // Amount > 5000 + individual + no clear context → who is this person
-    if (beneficiaryType === 'individual' && amount > 5000 && firstAnswer.length < 25) {
-      return { done: false, question: 'ما طبيعة معرفتك بهذا الشخص؟' }
-    }
-
-    // Urgency signals
-    if (classify(firstAnswer, URGENCY_SIGNALS)) {
-      return { done: false, question: 'من طلب منك هذه الحوالة، وهل تشعر بأي ضغط للإسراع؟' }
+    // High amount + very vague answer + unknown person
+    if (amount > 5000 && firstAnswer.trim().length < 20) {
+      return {
+        done: false,
+        question: 'ما طبيعة علاقتك بهذا الشخص أو الجهة؟'
+      };
     }
   }
 
-  // ── Q3: Final clarification if still ambiguous ─
-  if (qCount === 2) {
-    if (!classify(userAnswers, GUARANTEE_SIGNALS) && amount > 2000) {
-      return { done: false, question: 'هل تملك أي وثيقة أو ضمان يحفظ حقك في هذه المعاملة؟' }
-    }
+  // ════════════════════════════════════════════
+  //  Q3: Last resort — only if still high risk
+  // ════════════════════════════════════════════
+  if (qCount === 2 && amount > 3000 && !hit(answers, GUARANTEE)) {
+    return {
+      done: false,
+      question: 'هل تملك أي وثيقة أو ضمان يحفظ حقك؟'
+    };
   }
 
-  return { done: true }
+  return { done: true };
 }
