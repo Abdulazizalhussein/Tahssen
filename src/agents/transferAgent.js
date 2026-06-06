@@ -105,7 +105,7 @@ export async function getNextQuestion(apiKey, { beneficiary, amount, conversatio
 
   // ── Small amount: ask purpose once then proceed ─
   if (amount < 300) {
-    if (qCount === 0) return { done: false, question: 'ما سبب هذه التحويلة؟' }
+    if (qCount === 0) return { done: false, question: 'ما سبب هذه الحوالة؟' }
     return { done: true, skipRisk: true, riskScore: 10, reason: 'مبلغ بسيط' }
   }
 
@@ -114,7 +114,7 @@ export async function getNextQuestion(apiKey, { beneficiary, amount, conversatio
 
   // ── Q1: Always ask purpose first ────────────
   if (qCount === 0) {
-    return { done: false, question: 'ما سبب هذه التحويلة؟' }
+    return { done: false, question: 'ما سبب هذه الحوالة؟' }
   }
 
   // ── Q2: Depends on first answer + context ────
@@ -141,7 +141,7 @@ export async function getNextQuestion(apiKey, { beneficiary, amount, conversatio
 
     // Urgency signals
     if (classify(firstAnswer, URGENCY_SIGNALS)) {
-      return { done: false, question: 'من طلب منك هذه التحويلة، وهل تشعر بأي ضغط للإسراع؟' }
+      return { done: false, question: 'من طلب منك هذه الحوالة، وهل تشعر بأي ضغط للإسراع؟' }
     }
   }
 
