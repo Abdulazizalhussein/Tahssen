@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Feather } from '@expo/vector-icons'
 import { theme } from '../theme'
 import { useAccount } from '../context/AccountContext'
-import { NoApiKey, ErrorBox, TypingDots } from '../components/ui'
+import { ErrorBox, TypingDots } from '../components/ui'
 import RiskMeter from '../components/RiskMeter'
 import AddBeneficiaryModal from '../components/AddBeneficiaryModal'
 import { getNextQuestion } from '../agents/transferAgent'
@@ -33,7 +33,6 @@ const REASON_TEXT = {
 export default function TransferScreen({ navigation }) {
   const account = useAccount()
   const {
-    apiKey,
     transactions,
     beneficiaries,
     balance,
@@ -108,7 +107,7 @@ export default function TransferScreen({ navigation }) {
       setBusy(true)
       setError(null)
       try {
-        const res = await analyzeTransfer(apiKey, {
+        const res = await analyzeTransfer(null, {
           beneficiary,
           amount: Number(amount),
           reason: history.find((m) => m.role === 'user')?.content || '',
@@ -129,7 +128,7 @@ export default function TransferScreen({ navigation }) {
         setBusy(false)
       }
     },
-    [apiKey, beneficiary, amount, previousTransfers, balance, monthlySpent, monthlyBudget, t]
+    [beneficiary, amount, previousTransfers, balance, monthlySpent, monthlyBudget, t]
   )
 
   // Routes a getNextQuestion result to the right UI branch.
@@ -177,7 +176,7 @@ export default function TransferScreen({ navigation }) {
     setStep(STEP.INTERROGATE)
     setBusy(true)
     try {
-      const result = await getNextQuestion(apiKey, {
+      const result = await getNextQuestion(null, {
         beneficiary,
         amount: Number(amount),
         conversationHistory: [],
@@ -189,7 +188,7 @@ export default function TransferScreen({ navigation }) {
     } finally {
       setBusy(false)
     }
-  }, [apiKey, beneficiary, amount, previousTransfers, handleQuestionResult, t])
+  }, [beneficiary, amount, previousTransfers, handleQuestionResult, t])
 
   const sendAnswer = useCallback(async () => {
     const text = answer.trim()
@@ -200,7 +199,7 @@ export default function TransferScreen({ navigation }) {
     setBusy(true)
     setError(null)
     try {
-      const result = await getNextQuestion(apiKey, {
+      const result = await getNextQuestion(null, {
         beneficiary,
         amount: Number(amount),
         conversationHistory: history,
@@ -213,7 +212,7 @@ export default function TransferScreen({ navigation }) {
       setBusy(false)
       requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }))
     }
-  }, [answer, busy, messages, apiKey, beneficiary, amount, previousTransfers, handleQuestionResult, t])
+  }, [answer, busy, messages, beneficiary, amount, previousTransfers, handleQuestionResult, t])
 
   const confirm = () => {
     const payload = {
@@ -242,15 +241,6 @@ export default function TransferScreen({ navigation }) {
     blockTransfer(payload)
     setResult({ blocked: true })
     setStep(STEP.RESULT)
-  }
-
-  if (!apiKey && step === STEP.PICK) {
-    return (
-      <Screen insets={insets}>
-        <Header t={t} step={step} isRTL={isRTL} />
-        <NoApiKey onGoSettings={() => navigation.navigate('Settings')} />
-      </Screen>
-    )
   }
 
   return (

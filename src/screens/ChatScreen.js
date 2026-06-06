@@ -14,13 +14,13 @@ import { Feather } from '@expo/vector-icons'
 import { theme } from '../theme'
 import { useAccount } from '../context/AccountContext'
 import MessageBubble from '../components/MessageBubble'
-import { NoApiKey, TypingDots, ErrorBox } from '../components/ui'
+import { TypingDots, ErrorBox } from '../components/ui'
 import { SUGGESTED_QUESTIONS } from '../i18n'
 import { chat } from '../agents/chatAgent'
 
 export default function ChatScreen({ navigation }) {
   const account = useAccount()
-  const { apiKey, t, isRTL, lang } = account
+  const { t, isRTL, lang } = account
   const insets = useSafeAreaInsets()
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
@@ -39,28 +39,17 @@ export default function ChatScreen({ navigation }) {
       setError(null)
       requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }))
       try {
-        const reply = await chat(apiKey, account, history)
+        const reply = await chat(null, account, history)
         setMessages([...history, { role: 'assistant', content: reply }])
       } catch (e) {
-        setError(e?.code === 'MISSING_API_KEY' ? t('noApiKeyMsg') : e?.message || t('error'))
+        setError(e?.message || t('error'))
       } finally {
         setBusy(false)
         requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }))
       }
     },
-    [input, busy, messages, apiKey, account, t]
+    [input, busy, messages, account, t]
   )
-
-  if (!apiKey) {
-    return (
-      <View style={[styles.screen, { paddingTop: insets.top + 20, padding: 20 }]}>
-        <Text style={[styles.title, { textAlign: isRTL ? 'right' : 'left' }]}>{t('tabChat')}</Text>
-        <View style={{ marginTop: 20 }}>
-          <NoApiKey onGoSettings={() => navigation.navigate('Settings')} />
-        </View>
-      </View>
-    )
-  }
 
   return (
     <KeyboardAvoidingView

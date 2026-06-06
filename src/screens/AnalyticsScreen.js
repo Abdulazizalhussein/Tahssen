@@ -37,7 +37,6 @@ const QUICK_CHIPS = [
 export default function AnalyticsScreen() {
   const account = useAccount()
   const {
-    apiKey,
     transactions,
     formatMoney,
     monthlyIncome,
@@ -68,11 +67,11 @@ export default function AnalyticsScreen() {
   const hasIncome = monthlyIncome > 0
 
   const load = useCallback(async () => {
-    if (!apiKey || monthlyIncome <= 0) return
+    if (monthlyIncome <= 0) return
     setBusy(true)
     setError(null)
     try {
-      const res = await generateInsights(apiKey, account)
+      const res = await generateInsights(null, account)
       setData(res)
     } catch (e) {
       setError(e?.message || t('error'))
@@ -80,7 +79,7 @@ export default function AnalyticsScreen() {
       setBusy(false)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiKey, transactions.length, lang, monthlyIncome])
+  }, [transactions.length, lang, monthlyIncome])
 
   useEffect(() => {
     load()

@@ -3,7 +3,7 @@
 //  AI-driven conversation manager. Smart, not rigid.
 // ─────────────────────────────────────────────────────────────────
 
-import { getClient, MODEL } from './client'
+import { proxyInterrogate } from './proxyClient'
 
 // ── Instant-signal lists (no AI needed for these) ────────────────
 
@@ -66,7 +66,7 @@ function classifyBeneficiary(name) {
 
 // ── Main export ───────────────────────────────────────────────────
 
-export async function getNextQuestion(apiKey, { beneficiary, amount, conversationHistory, previousTransfers }) {
+export async function getNextQuestion(_apiKey, { beneficiary, amount, conversationHistory, previousTransfers }) {
   const allAnswers = conversationHistory.filter((m) => m.role === 'user').map((m) => m.content).join(' ')
   const qCount = conversationHistory.filter((m) => m.role === 'assistant').length
   const bType = classifyBeneficiary(beneficiary || '')
@@ -103,90 +103,10 @@ export async function getNextQuestion(apiKey, { beneficiary, amount, conversatio
   // ── 5. Q1: always purpose ──────────────────────────────────────
   if (qCount === 0) return { done: false, question: 'ما سبب هذه الحوالة؟' }
 
-  // ── 6. Q2-Q4: AI-managed conversation ─────────────────────────
-  const client = getClient(apiKey)
-
-  const systemPrompt = `أنت وكيل حماية مالية ذكي في تطبيق تحصين. تدير حواراً مع مستخدم يريد إجراء حوالة بنكية.
-
-هدفك: فهم طبيعة المعاملة وتحديد مستوى الخطر — لا الرفض التلقائي.
-
-## تصنيف الحالات
-
-✅ آمن (0-30) — قرر APPROVE فوراً:
-- شخص معروف شخصياً (عائلة، صديق، زميل، عامل)
-- خدمة أو محل معروف (أمازون، نون، جرير، مطاعم الخ)
-- محل حضوري يمكن العودة إليه
-- فيه فاتورة أو رقم طلب أو عقد
-- مبلغ صغير مع أي توضيح
-- وسيط موثوق (منصة دفع معروفة)
-
-⚠️ متوسط (31-60) — اسأل سؤالاً مستهدفاً:
-- شخص غير معروف + مبلغ متوسط + سبب معقول
-- متجر إلكتروني لم يُذكر اسمه
-- سبب جزئي يحتاج توضيح
-
-🔶 مرتفع (61-79) — اسأل ثم قرر ANALYZE:
-- فرد مجهول + مبلغ كبير + سبب غامض
-- متجر غير موثق + لا ضمان
-- ضغط أو استعجال
-
-⛔ احتيال (80+) — قرر BLOCK فوراً:
-- وعود ربح/كريبتو/استثمار مضمون
-- شخص من سوشيال يطلب مال
-- "اشتر بطاقات وأرسلها"
-
-## قواعد الحوار
-
-1. لا تكرر أسئلة — كل سؤال يجب أن يكشف معلومة جديدة ومختلفة
-2. سؤال الضمان (فاتورة/رقم طلب) يُطرح مرة واحدة فقط
-3. حجم المبلغ وحده لا يعني احتيالاً — تحويل 50,000 لمقاول معروف آمن
-4. المؤسسة/الشركة/المحل أقل خطراً من الفرد المجهول
-5. اكتفِ بما تحصل عليه — لا تطلب معلومات غير ضرورية
-6. إذا أجاب بثقة ووضوح → قرر مباشرة
-
-## تنسيق الرد (JSON فقط)
-{
-  "action": "ask" | "approve" | "block" | "analyze",
-  "question": "السؤال إن كان action=ask",
-  "reason": "سبب القرار",
-  "riskScore": 0-100
-}`
-
-  const userMessage = `معلومات الحوالة:
-- المستفيد: "${beneficiary}" (${bType === 'institution' ? 'مؤسسة/جهة' : bType === 'individual' ? 'شخص فرد' : 'غير محدد'})
-- المبلغ: ${amount} ر.س
-- عدد الأسئلة المطروحة حتى الآن: ${qCount} من أصل 4
-
-المحادثة:
-${conversationHistory.map((m) => `${m.role === 'assistant' ? '[تحصين]' : '[المستخدم]'} ${m.content}`).join('\n')}
-
-قرر: هل تحتاج سؤالاً آخر لتوضيح الصورة؟ أم الأمر واضح الآن؟`
-
-  let result
+  // ── 6. Q2-Q4: AI-managed conversation (via proxy) ─────────────
   try {
-    const response = await client.chat.completions.create({
-      model: MODEL,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage },
-      ],
-      response_format: { type: 'json_object' },
-      max_tokens: 250,
-    })
-    result = JSON.parse(response.choices[0].message.content)
+    return await proxyInterrogate({ beneficiary, amount, conversationHistory, previousTransfers })
   } catch {
-    return { done: true } // fallback to full analysis
-  }
-
-  switch (result.action) {
-    case 'ask':
-      return { done: false, question: result.question || 'هل تملك ما يثبت هذه المعاملة؟' }
-    case 'approve':
-      return { done: true, skipRisk: true, riskScore: Math.min(result.riskScore || 20, 30), reason: result.reason }
-    case 'block':
-      return { done: true, forceHighRisk: true, riskScore: Math.max(result.riskScore || 90, 80), reason: result.reason }
-    case 'analyze':
-    default:
-      return { done: true }
+    return { done: true } // fallback to full analysis on network error
   }
 }

@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import * as SecureStore from 'expo-secure-store'
 import { STRINGS } from '../i18n'
 import {
   openDatabase,
@@ -30,7 +29,6 @@ import {
 } from '../db/database'
 
 const LANG_KEY = 'tahseen.lang.v1'
-const API_KEY_NAME = 'tahseen_openai_key'
 
 const AccountContext = createContext(null)
 
@@ -46,7 +44,6 @@ export function AccountProvider({ children }) {
   const [totalFixedExpenses, setTotalFixedExpenses] = useState(0)
   const [transactions, setTransactions] = useState([])
   const [beneficiaries, setBeneficiaries] = useState([])
-  const [apiKey, setApiKeyState] = useState(null)
   const [lang, setLang] = useState('ar')
   const [isLoading, setIsLoading] = useState(true)
 
@@ -80,10 +77,6 @@ export function AccountProvider({ children }) {
         await openDatabase()
         const storedLang = await AsyncStorage.getItem(LANG_KEY)
         if (storedLang) setLang(storedLang)
-
-        const savedKey = await SecureStore.getItemAsync(API_KEY_NAME)
-        const keyToUse = savedKey || null
-        if (keyToUse) setApiKeyState(keyToUse)
 
         const session = await getSession()
         if (session?.user_id) await loadUser(session.user_id)
@@ -212,17 +205,6 @@ export function AccountProvider({ children }) {
     [userId, refreshFixedExpenses]
   )
 
-  const setApiKey = useCallback(async (key) => {
-    const trimmed = (key || '').trim()
-    setApiKeyState(trimmed || null)
-    try {
-      if (trimmed) await SecureStore.setItemAsync(API_KEY_NAME, trimmed)
-      else await SecureStore.deleteItemAsync(API_KEY_NAME)
-    } catch (e) {
-      // ignore
-    }
-  }, [])
-
   const toggleLang = useCallback(async () => {
     setLang((prev) => {
       const next = prev === 'ar' ? 'en' : 'ar'
@@ -338,7 +320,6 @@ export function AccountProvider({ children }) {
       discretionaryBudget,
       transactions,
       beneficiaries,
-      apiKey,
       lang,
       isLoading,
       isAuthed: !!userId,
@@ -347,7 +328,6 @@ export function AccountProvider({ children }) {
       login,
       logout,
       loadUser,
-      setApiKey,
       toggleLang,
       executeTransfer,
       blockTransfer,
@@ -376,14 +356,12 @@ export function AccountProvider({ children }) {
       discretionaryBudget,
       transactions,
       beneficiaries,
-      apiKey,
       lang,
       isLoading,
       register,
       login,
       logout,
       loadUser,
-      setApiKey,
       toggleLang,
       executeTransfer,
       blockTransfer,

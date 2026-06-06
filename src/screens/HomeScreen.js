@@ -22,7 +22,7 @@ function Action({ icon, label, onPress, primary }) {
 
 export default function HomeScreen({ navigation }) {
   const account = useAccount()
-  const { transactions, apiKey, userName, t, isRTL, lang } = account
+  const { transactions, userName, t, isRTL, lang } = account
   const insets = useSafeAreaInsets()
   const [status, setStatus] = useState(null)
   const [loadingStatus, setLoadingStatus] = useState(false)
@@ -35,13 +35,9 @@ export default function HomeScreen({ navigation }) {
   })
 
   const loadStatus = useCallback(async () => {
-    if (!apiKey) {
-      setStatus(null)
-      return
-    }
     setLoadingStatus(true)
     try {
-      const line = await accountStatusLine(apiKey, account)
+      const line = await accountStatusLine(null, account)
       setStatus(line)
     } catch (e) {
       setStatus('')
@@ -49,7 +45,7 @@ export default function HomeScreen({ navigation }) {
       setLoadingStatus(false)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiKey, transactions.length, lang])
+  }, [transactions.length, lang])
 
   useEffect(() => {
     loadStatus()

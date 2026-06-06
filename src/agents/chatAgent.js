@@ -1,4 +1,4 @@
-import { getClient, MODEL } from './client'
+import { proxyChat } from './proxyClient'
 
 function systemPrompt({
   balance,
@@ -44,123 +44,77 @@ Do not invent transactions that are not in the data. You never execute transfers
 you only advise.`
 }
 
-export async function chat(apiKey, account, messages) {
-  const client = getClient(apiKey)
-
-  const response = await client.chat.completions.create({
-    model: MODEL,
-    temperature: 0.6,
-    max_tokens: 400,
-    messages: [
-      { role: 'system', content: systemPrompt(account) },
-      ...messages.map((m) => ({ role: m.role, content: m.content })),
-    ],
-  })
-
-  return response.choices[0].message.content.trim()
+export async function chat(_apiKey, account, messages) {
+  const accountData = {
+    balance: account.balance,
+    monthlySpent: account.monthlySpent,
+    monthlyBudget: account.monthlyBudget,
+    monthlyIncome: account.monthlyIncome,
+    fixedExpenses: account.fixedExpenses,
+  }
+  // Inject system context as first user message so proxy sees it
+  const withSystem = [
+    { role: 'system', content: systemPrompt(account) },
+    ...messages.map((m) => ({ role: m.role, content: m.content })),
+  ]
+  return proxyChat({ messages: withSystem, accountData })
 }
 
-const INSIGHTS_SYSTEM = `You are Tahseen's analytics engine for Alinma Bank.
-Analyze the user's account data and return a structured analysis as ONLY valid JSON:
-{
-  "healthScore": 0-100 integer reflecting financial health and risk discipline,
-  "insights": [ up to 3 short specific strings about their actual data ],
-  "monthEndPrediction": "one short sentence predicting end-of-month balance/spending",
-  "predictedMonthEndBalance": number
-}
-Write insights, prediction text in Arabic primarily (English if lang=en).
-Base everything strictly on the provided numbers. Do not invent data.`
+// INSIGHTS_SYSTEM removed — generateInsights now uses local computation
 
-export async function generateInsights(apiKey, account) {
-  const client = getClient(apiKey)
-
+export async function generateInsights(_apiKey, account) {
   const {
     balance,
     monthlyBudget,
     monthlySpent,
     monthlyIncome = 0,
-    fixedExpenses = [],
     totalFixedExpenses = 0,
     transactions,
-    lang,
   } = account
   const stats = computeStats(transactions)
 
-  const payload = {
-    lang,
-    balance,
-    monthlyBudget,
-    monthlySpent,
-    monthlyIncome,
-    fixedExpenses: fixedExpenses.map((e) => ({ name: e.name, amount: e.amount })),
-    totalFixedExpenses,
-    discretionaryBudget: monthlyIncome - totalFixedExpenses,
-    remainingDiscretionary: monthlyIncome - totalFixedExpenses - monthlySpent,
-    today: new Date().toISOString().slice(0, 10),
-    dayOfMonth: new Date().getDate(),
-    stats,
-    recentTransactions: transactions.slice(0, 15).map((t) => ({
-      amount: t.amount,
-      beneficiary: t.beneficiary,
-      riskScore: t.riskScore,
-      blocked: t.blocked,
-      date: new Date(t.timestamp).toISOString().slice(0, 10),
-    })),
-  }
+  // Local health score: penalise blocked txs and overspend
+  const blockedRatio = stats.sentCount + stats.blockedCount > 0
+    ? stats.blockedCount / (stats.sentCount + stats.blockedCount) : 0
+  const spendRatio = monthlyBudget > 0 ? monthlySpent / monthlyBudget : 0
+  const healthScore = Math.max(0, Math.min(100, Math.round(
+    100 - blockedRatio * 40 - Math.max(0, spendRatio - 0.8) * 100
+  )))
 
-  const response = await client.chat.completions.create({
-    model: MODEL,
-    temperature: 0.5,
-    max_tokens: 300,
-    messages: [
-      { role: 'system', content: INSIGHTS_SYSTEM },
-      { role: 'user', content: JSON.stringify(payload) },
-    ],
-    response_format: { type: 'json_object' },
-  })
+  const discretionary = monthlyIncome - totalFixedExpenses
+  const remaining = discretionary - monthlySpent
+  const dayOfMonth = new Date().getDate()
+  const daysLeft = 30 - dayOfMonth
+  const dailyRate = dayOfMonth > 0 ? monthlySpent / dayOfMonth : 0
+  const predictedMonthEndBalance = balance - dailyRate * daysLeft
 
-  const parsed = JSON.parse(response.choices[0].message.content)
+  const insights = []
+  if (spendRatio > 0.8) insights.push(`أنفقت ${Math.round(spendRatio * 100)}% من ميزانيتك الشهرية`)
+  if (stats.blockedCount > 0) insights.push(`تم إيقاف ${stats.blockedCount} معاملة مشبوهة`)
+  if (remaining > 0 && monthlyIncome > 0) insights.push(`المتبقي من الدخل التقديري: ${Math.round(remaining)} ر.س`)
+
   return {
-    healthScore: Math.max(0, Math.min(100, Math.round(Number(parsed.healthScore) || 0))),
-    insights: Array.isArray(parsed.insights) ? parsed.insights.slice(0, 3) : [],
-    monthEndPrediction: parsed.monthEndPrediction || '',
-    predictedMonthEndBalance:
-      typeof parsed.predictedMonthEndBalance === 'number'
-        ? parsed.predictedMonthEndBalance
-        : null,
+    healthScore,
+    insights,
+    monthEndPrediction: predictedMonthEndBalance > 0
+      ? `يُتوقع رصيدك نهاية الشهر: ${Math.round(predictedMonthEndBalance).toLocaleString('ar-SA')} ر.س`
+      : 'يُتوقع انخفاض الرصيد نهاية الشهر — راجع إنفاقك',
+    predictedMonthEndBalance,
     stats,
   }
 }
 
-const STATUS_SYSTEM = `You are Tahseen, an AI financial protection agent for Alinma Bank.
-Given the user's account snapshot, return ONLY valid JSON:
-{"status": "<one short sentence about current account health, in Arabic primarily>"}`
+// STATUS_SYSTEM removed — accountStatusLine now uses local computation
 
-export async function accountStatusLine(apiKey, account) {
-  const client = getClient(apiKey)
-  const { balance, monthlyBudget, monthlySpent, transactions, lang } = account
-  const response = await client.chat.completions.create({
-    model: MODEL,
-    temperature: 0.5,
-    max_tokens: 300,
-    messages: [
-      { role: 'system', content: STATUS_SYSTEM },
-      {
-        role: 'user',
-        content: JSON.stringify({
-          lang,
-          balance,
-          monthlyBudget,
-          monthlySpent,
-          transactionCount: transactions.length,
-          blockedCount: transactions.filter((t) => t.blocked).length,
-        }),
-      },
-    ],
-    response_format: { type: 'json_object' },
-  })
-  const parsed = JSON.parse(response.choices[0].message.content)
-  return parsed.status || ''
+export async function accountStatusLine(_apiKey, account) {
+  const { balance, monthlyBudget, monthlySpent, transactions } = account
+  const blockedCount = transactions.filter((t) => t.blocked).length
+  const spendRatio = monthlyBudget > 0 ? monthlySpent / monthlyBudget : 0
+
+  if (blockedCount > 0) return `تم إيقاف ${blockedCount} معاملة مشبوهة هذا الشهر`
+  if (spendRatio > 0.9) return `تجاوزت 90% من الميزانية — رصيدك ${balance.toLocaleString('ar-SA')} ر.س`
+  if (spendRatio > 0.7) return `أنفقت ${Math.round(spendRatio * 100)}% من ميزانيتك الشهرية`
+  return `رصيدك ${balance.toLocaleString('ar-SA')} ر.س — وضعك المالي مستقر`
 }
 
 export function computeStats(transactions) {
