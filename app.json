@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Tahseen-Expo",
-    "slug": "Tahseen-Expo",
+    "name": "Tahseen",
+    "slug": "tahseen-expo",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -23,6 +23,18 @@
     "plugins": [
       "expo-secure-store",
       "expo-sqlite"
-    ]
+    ],
+    "owner": "abdulazizalhussein",
+    "extra": {
+      "eas": {
+        "projectId": "cabd377f-ffed-448f-8360-7fe28a9b21d0"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/cabd377f-ffed-448f-8360-7fe28a9b21d0"
+    }
   }
 }
