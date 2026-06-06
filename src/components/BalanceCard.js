@@ -11,10 +11,15 @@ export default function BalanceCard() {
 
   return (
     <View style={styles.card}>
-      <Text style={[styles.label, { textAlign: align }]}>{t('balance')}</Text>
-      <View style={[styles.balanceRow, isRTL && styles.rtlRow]}>
+      <Text style={[styles.label, { textAlign: 'center' }]}>{t('balance')}</Text>
+      <View style={styles.balanceRow}>
         <Text style={styles.balance}>{formatMoney(balance)}</Text>
         <Text style={styles.currency}>{t('currency')}</Text>
+      </View>
+
+      <View style={styles.accountRow}>
+        <View style={styles.dot} />
+        <Text style={styles.accountName}>{t('accountName')}</Text>
       </View>
 
       <View style={styles.divider} />
@@ -43,17 +48,20 @@ export default function BalanceCard() {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: theme.bgCardLight,
-    borderRadius: theme.radiusLg,
-    padding: 22,
-    borderWidth: 1,
-    borderColor: theme.border,
+    borderRadius: theme.radiusXl,
+    padding: 24,
+    borderWidth: 0.5,
+    borderColor: theme.borderLight,
   },
   rtlRow: { flexDirection: 'row-reverse' },
-  label: { color: theme.textMuted, fontSize: 13, marginBottom: 8 },
-  balanceRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
-  balance: { color: theme.text, fontSize: 40, fontWeight: '800', letterSpacing: 0.5 },
-  currency: { color: theme.gold, fontSize: 18, fontWeight: '700', marginBottom: 6 },
-  divider: { height: 1, backgroundColor: theme.border, marginVertical: 16 },
+  label: { color: theme.textMuted, fontSize: 13, marginBottom: 10 },
+  balanceRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', gap: 8 },
+  balance: { color: theme.text, fontSize: 42, fontWeight: '800', letterSpacing: 0.5 },
+  currency: { color: theme.gold, fontSize: 18, fontWeight: '700', marginBottom: 7 },
+  accountRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 10 },
+  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: theme.teal },
+  accountName: { color: theme.textMuted, fontSize: 13, fontWeight: '500' },
+  divider: { height: 1, backgroundColor: theme.border, marginVertical: 18 },
   spentRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
   spentLabel: { color: theme.textMuted, fontSize: 13 },
   spentValue: { color: theme.text, fontSize: 13, fontWeight: '600' },

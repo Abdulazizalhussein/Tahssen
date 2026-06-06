@@ -132,6 +132,13 @@ export const STRINGS = {
     confirmSignOut: 'هل تريد تسجيل الخروج؟',
     memberSince: 'عضو منذ',
     greeting: 'مرحباً',
+    accountName: 'حساب الإنماء الجاري',
+    enableAnalyticsTitle: 'لتفعيل التحليلات الدقيقة',
+    enableAnalyticsSubtitle: 'أضف مدخولك الشهري ومصاريفك الثابتة',
+    saveAndEnable: 'حفظ وتفعيل التحليلات',
+    edit: 'تعديل',
+    editFinancials: 'تعديل المدخول والمصاريف',
+    done: 'تم',
   },
   en: {
     appName: 'Tahseen',
@@ -259,6 +266,13 @@ export const STRINGS = {
     confirmSignOut: 'Sign out of your account?',
     memberSince: 'Member since',
     greeting: 'Welcome',
+    accountName: 'Alinma Current Account',
+    enableAnalyticsTitle: 'Enable accurate analytics',
+    enableAnalyticsSubtitle: 'Add your monthly income and fixed expenses',
+    saveAndEnable: 'Save & Enable Analytics',
+    edit: 'Edit',
+    editFinancials: 'Edit income & expenses',
+    done: 'Done',
   },
 }
 

@@ -14,38 +14,6 @@ export function SectionTitle({ children, icon }) {
   )
 }
 
-export function NoApiKey({ onGoSettings }) {
-  const { t } = useAccount()
-  return (
-    <View style={styles.noKey}>
-      <View style={styles.noKeyIcon}>
-        <Feather name="key" size={26} color={theme.warning} />
-      </View>
-      <Text style={styles.noKeyTitle}>{t('noApiKeyTitle')}</Text>
-      <Text style={styles.noKeyMsg}>{t('noApiKeyMsg')}</Text>
-      <TouchableOpacity style={styles.noKeyBtn} onPress={onGoSettings} activeOpacity={0.85}>
-        <Feather name="settings" size={16} color={theme.bg} />
-        <Text style={styles.noKeyBtnText}>{t('goToSettings')}</Text>
-      </TouchableOpacity>
-    </View>
-  )
-}
-
-export function ApiKeyBlocker({ onGoSettings }) {
-  const { t, isRTL } = useAccount()
-  return (
-    <View style={[styles.blocker, isRTL && styles.rtl]}>
-      <Feather name="alert-circle" size={22} color={theme.warning} />
-      <Text style={[styles.blockerText, { textAlign: isRTL ? 'right' : 'left' }]}>
-        {t('aiNeedsKey')}
-      </Text>
-      <TouchableOpacity style={styles.blockerBtn} onPress={onGoSettings} activeOpacity={0.85}>
-        <Text style={styles.blockerBtnText}>{t('settingsArrow')}</Text>
-      </TouchableOpacity>
-    </View>
-  )
-}
-
 export function ErrorBox({ message, onRetry }) {
   const { t } = useAccount()
   return (
@@ -89,53 +57,6 @@ const styles = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12, marginTop: 24 },
   rtl: { flexDirection: 'row-reverse' },
   title: { color: theme.text, fontSize: 16, fontWeight: '700' },
-  noKey: {
-    backgroundColor: theme.bgCardLight,
-    borderRadius: theme.radiusLg,
-    padding: 24,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: theme.border,
-  },
-  noKeyIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: `${theme.warning}22`,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-  },
-  noKeyTitle: { color: theme.text, fontSize: 17, fontWeight: '700', marginBottom: 6 },
-  noKeyMsg: { color: theme.textMuted, fontSize: 14, textAlign: 'center', lineHeight: 20, marginBottom: 18 },
-  noKeyBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: theme.gold,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: theme.radius,
-  },
-  noKeyBtnText: { color: theme.bg, fontSize: 15, fontWeight: '700' },
-  blocker: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: `${theme.warning}14`,
-    borderWidth: 1,
-    borderColor: `${theme.warning}55`,
-    borderRadius: theme.radius,
-    padding: 14,
-  },
-  blockerText: { color: theme.text, fontSize: 13, flex: 1, lineHeight: 19 },
-  blockerBtn: {
-    backgroundColor: theme.warning,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: theme.radius,
-  },
-  blockerBtnText: { color: theme.bg, fontSize: 13, fontWeight: '700' },
   errorBox: {
     flexDirection: 'row',
     alignItems: 'center',

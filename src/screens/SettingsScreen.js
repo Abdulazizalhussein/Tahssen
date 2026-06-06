@@ -1,10 +1,9 @@
-import React, { useState } from 'react'
+import React from 'react'
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  TextInput,
   TouchableOpacity,
   Alert,
 } from 'react-native'
@@ -16,8 +15,6 @@ import { SectionTitle } from '../components/ui'
 
 export default function SettingsScreen({ navigation }) {
   const {
-    apiKey,
-    setApiKey,
     balance,
     formatMoney,
     resetAccount,
@@ -30,21 +27,8 @@ export default function SettingsScreen({ navigation }) {
     isRTL,
   } = useAccount()
   const insets = useSafeAreaInsets()
-  const [keyInput, setKeyInput] = useState('')
-  const [editing, setEditing] = useState(!apiKey)
-  const [saved, setSaved] = useState(false)
-  const [showKey, setShowKey] = useState(false)
 
-  const masked = apiKey ? `${apiKey.slice(0, 5)}${'•'.repeat(12)}${apiKey.slice(-4)}` : ''
   const memberSinceDate = memberSince ? memberSince.slice(0, 10) : ''
-
-  const save = async () => {
-    await setApiKey(keyInput)
-    setKeyInput('')
-    setEditing(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
-  }
 
   const confirmReset = () => {
     Alert.alert(t('resetAccount'), '', [
@@ -89,86 +73,6 @@ export default function SettingsScreen({ navigation }) {
           )}
         </View>
       </View>
-
-      <SectionTitle icon="key">{t('apiKey')}</SectionTitle>
-      <View style={styles.card}>
-        {!editing && apiKey ? (
-          <View>
-            <View style={[styles.keyRow, isRTL && styles.rtl]}>
-              <View style={[styles.keyMaskRow, isRTL && styles.rtl]}>
-                <Feather name="check-circle" size={18} color={theme.success} />
-                <Text style={styles.keyMask}>{masked}</Text>
-              </View>
-              <TouchableOpacity
-                style={[styles.changeBtn, isRTL && styles.rtl]}
-                onPress={() => setEditing(true)}
-              >
-                <Feather name="edit-2" size={15} color={theme.gold} />
-                <Text style={styles.changeText}>{t('changeKey')}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        ) : (
-          <View>
-            <View style={[styles.requiredBanner, isRTL && styles.rtl]}>
-              <Feather name="alert-circle" size={18} color={theme.warning} />
-              <Text style={[styles.requiredText, { textAlign: isRTL ? 'right' : 'left' }]}>
-                {t('apiKeyRequired')}
-              </Text>
-            </View>
-            <Text style={[styles.instructions, { textAlign: isRTL ? 'right' : 'left' }]}>
-              {t('apiKeyInstructions')}
-            </Text>
-            <Text style={[styles.linkText, { textAlign: isRTL ? 'right' : 'left' }]}>
-              {t('apiKeyGetLink')}
-            </Text>
-            <View style={[styles.inputWrap, isRTL && styles.rtl]}>
-              <Feather name="key" size={18} color={theme.textMuted} />
-              <TextInput
-                style={[styles.input, { textAlign: isRTL ? 'right' : 'left' }]}
-                placeholder={t('apiKeyPlaceholder')}
-                placeholderTextColor={theme.textHint}
-                value={keyInput}
-                onChangeText={setKeyInput}
-                autoCapitalize="none"
-                autoCorrect={false}
-                secureTextEntry={!showKey}
-              />
-              <TouchableOpacity onPress={() => setShowKey((s) => !s)}>
-                <Feather name={showKey ? 'eye-off' : 'eye'} size={18} color={theme.textMuted} />
-              </TouchableOpacity>
-            </View>
-            <TouchableOpacity
-              style={[styles.saveBtn, !keyInput.trim() && { opacity: 0.4 }]}
-              onPress={save}
-              disabled={!keyInput.trim()}
-            >
-              <Text style={styles.saveBtnText}>{t('saveKey')}</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-        {saved && <Text style={styles.savedHint}>{t('keySaved')}</Text>}
-      </View>
-
-      <SectionTitle icon="trending-up">{t('financialProfile')}</SectionTitle>
-      <TouchableOpacity
-        style={[styles.navRow, isRTL && styles.rtl]}
-        onPress={() => navigation.navigate('FinancialProfile')}
-        activeOpacity={0.85}
-      >
-        <View style={[styles.navLeft, isRTL && styles.rtl]}>
-          <View style={styles.navIcon}>
-            <Feather name="trending-up" size={18} color={theme.gold} />
-          </View>
-          <View style={{ alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
-            <Text style={styles.navTitle}>{t('financialProfile')}</Text>
-            <Text style={styles.navDesc} numberOfLines={1}>
-              {t('financialProfileDesc')}
-            </Text>
-          </View>
-        </View>
-        <Feather name={isRTL ? 'chevron-left' : 'chevron-right'} size={20} color={theme.textMuted} />
-      </TouchableOpacity>
 
       <SectionTitle icon="globe">{t('language')}</SectionTitle>
       <View style={styles.card}>

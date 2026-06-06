@@ -14,7 +14,6 @@ import TransferScreen from './src/screens/TransferScreen'
 import ChatScreen from './src/screens/ChatScreen'
 import AnalyticsScreen from './src/screens/AnalyticsScreen'
 import SettingsScreen from './src/screens/SettingsScreen'
-import FinancialProfileScreen from './src/screens/FinancialProfileScreen'
 import SplashScreen from './src/screens/auth/SplashScreen'
 import AuthScreen from './src/screens/auth/AuthScreen'
 
@@ -48,16 +47,18 @@ function Tabs() {
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor: theme.gold,
-        tabBarInactiveTintColor: theme.textMuted,
+        tabBarInactiveTintColor: 'rgba(255,255,255,0.45)',
         tabBarLabel: labels[route.name],
         tabBarStyle: {
-          backgroundColor: theme.bgCard,
-          borderTopColor: theme.border,
-          height: 64,
-          paddingBottom: 10,
+          backgroundColor: '#001a2e',
+          borderTopColor: 'rgba(255,255,255,0.08)',
+          borderTopWidth: 0.5,
+          height: 80,
+          paddingBottom: 20,
           paddingTop: 8,
         },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '500', marginTop: 2 },
+        tabBarIconStyle: { marginTop: 4 },
         tabBarIcon: ({ color, size }) => (
           <Feather name={ICONS[route.name]} size={size - 2} color={color} />
         ),
@@ -79,7 +80,6 @@ function Root() {
         <RootStack.Screen name="Splash" component={SplashScreen} />
         <RootStack.Screen name="Auth" component={AuthScreen} />
         <RootStack.Screen name="Main" component={Tabs} />
-        <RootStack.Screen name="FinancialProfile" component={FinancialProfileScreen} />
       </RootStack.Navigator>
     </NavigationContainer>
   )
