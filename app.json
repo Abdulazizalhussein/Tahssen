@@ -24,7 +24,7 @@
       "expo-secure-store",
       "expo-sqlite"
     ],
-    "owner": "abdulazizalhussein",
+    "owner": "tahseenai",
     "extra": {
       "eas": {
         "projectId": "cabd377f-ffed-448f-8360-7fe28a9b21d0"
