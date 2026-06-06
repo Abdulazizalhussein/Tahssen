@@ -40,8 +40,13 @@ export function AccountProvider({ children }) {
         }
         const storedLang = await AsyncStorage.getItem(LANG_KEY)
         if (storedLang) setLang(storedLang)
-        const key = await SecureStore.getItemAsync(API_KEY_NAME)
-        if (key) setApiKeyState(key)
+        const envKey = process.env.EXPO_PUBLIC_OPENAI_KEY
+        const savedKey = await SecureStore.getItemAsync(API_KEY_NAME)
+        const keyToUse = savedKey || envKey || null
+        if (keyToUse && !savedKey) {
+          await SecureStore.setItemAsync(API_KEY_NAME, keyToUse)
+        }
+        if (keyToUse) setApiKeyState(keyToUse)
       } catch (e) {
         // ignore corrupt storage
       } finally {

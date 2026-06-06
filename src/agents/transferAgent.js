@@ -39,6 +39,7 @@ export async function nextQuestion(
   const response = await client.chat.completions.create({
     model: MODEL,
     temperature: 0.5,
+    max_tokens: 150,
     messages,
     response_format: { type: 'json_object' },
   })

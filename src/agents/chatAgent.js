@@ -30,6 +30,7 @@ export async function chat(apiKey, account, messages) {
   const response = await client.chat.completions.create({
     model: MODEL,
     temperature: 0.6,
+    max_tokens: 400,
     messages: [
       { role: 'system', content: systemPrompt(account) },
       ...messages.map((m) => ({ role: m.role, content: m.content })),
@@ -76,6 +77,7 @@ export async function generateInsights(apiKey, account) {
   const response = await client.chat.completions.create({
     model: MODEL,
     temperature: 0.5,
+    max_tokens: 300,
     messages: [
       { role: 'system', content: INSIGHTS_SYSTEM },
       { role: 'user', content: JSON.stringify(payload) },
@@ -106,6 +108,7 @@ export async function accountStatusLine(apiKey, account) {
   const response = await client.chat.completions.create({
     model: MODEL,
     temperature: 0.5,
+    max_tokens: 300,
     messages: [
       { role: 'system', content: STATUS_SYSTEM },
       {

@@ -48,6 +48,7 @@ export async function analyzeTransfer(
   const response = await client.chat.completions.create({
     model: MODEL,
     temperature: 0.4,
+    max_tokens: 800,
     messages: [
       { role: 'system', content: SYSTEM },
       { role: 'user', content: JSON.stringify(payload) },
