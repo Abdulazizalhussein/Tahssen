@@ -14,7 +14,18 @@ export async function openDatabase() {
       password_hash TEXT NOT NULL,
       balance REAL DEFAULT 45230.00,
       monthly_budget REAL DEFAULT 8500.00,
+      monthly_income REAL DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS fixed_expenses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      name_en TEXT,
+      amount REAL NOT NULL,
+      category TEXT DEFAULT 'other',
+      FOREIGN KEY (user_id) REFERENCES users(id)
     );
 
     CREATE TABLE IF NOT EXISTS transactions (
@@ -37,7 +48,18 @@ export async function openDatabase() {
       created_at TEXT DEFAULT (datetime('now'))
     );
   `)
+  await migrate()
   return db
+}
+
+// SQLite ADD COLUMN throws if the column already exists; ignore that case so
+// the migration is safe to run on every launch.
+async function migrate() {
+  try {
+    await db.execAsync('ALTER TABLE users ADD COLUMN monthly_income REAL DEFAULT 0')
+  } catch (e) {
+    // column already exists
+  }
 }
 
 export async function hashPassword(password) {
@@ -150,4 +172,54 @@ export async function getMonthlySpent(userId) {
 export async function resetUserData(userId) {
   await db.runAsync('DELETE FROM transactions WHERE user_id = ?', [userId])
   await db.runAsync('UPDATE users SET balance = 45230.00 WHERE id = ?', [userId])
+}
+
+// Financial profile: monthly income & fixed expenses
+export async function updateMonthlyIncome(userId, income) {
+  await db.runAsync('UPDATE users SET monthly_income = ? WHERE id = ?', [
+    Number(income) || 0,
+    userId,
+  ])
+}
+
+export async function addFixedExpense(userId, { name, nameEn, amount, category }) {
+  const result = await db.runAsync(
+    `INSERT INTO fixed_expenses (user_id, name, name_en, amount, category)
+     VALUES (?, ?, ?, ?, ?)`,
+    [userId, (name || '').trim(), nameEn || null, Number(amount) || 0, category || 'other']
+  )
+  return result.lastInsertRowId
+}
+
+export async function getFixedExpenses(userId) {
+  const rows = await db.getAllAsync(
+    'SELECT * FROM fixed_expenses WHERE user_id = ? ORDER BY id ASC',
+    [userId]
+  )
+  return rows.map((r) => ({
+    id: String(r.id),
+    name: r.name,
+    nameEn: r.name_en || '',
+    amount: r.amount,
+    category: r.category || 'other',
+  }))
+}
+
+export async function deleteFixedExpense(id) {
+  await db.runAsync('DELETE FROM fixed_expenses WHERE id = ?', [id])
+}
+
+export async function updateFixedExpense(id, { name, nameEn, amount, category }) {
+  await db.runAsync(
+    'UPDATE fixed_expenses SET name = ?, name_en = ?, amount = ?, category = ? WHERE id = ?',
+    [(name || '').trim(), nameEn || null, Number(amount) || 0, category || 'other', id]
+  )
+}
+
+export async function getTotalFixedExpenses(userId) {
+  const result = await db.getFirstAsync(
+    'SELECT COALESCE(SUM(amount), 0) as total FROM fixed_expenses WHERE user_id = ?',
+    [userId]
+  )
+  return result?.total || 0
 }

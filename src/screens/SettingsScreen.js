@@ -33,6 +33,7 @@ export default function SettingsScreen({ navigation }) {
   const [keyInput, setKeyInput] = useState('')
   const [editing, setEditing] = useState(!apiKey)
   const [saved, setSaved] = useState(false)
+  const [showKey, setShowKey] = useState(false)
 
   const masked = apiKey ? `${apiKey.slice(0, 5)}${'•'.repeat(12)}${apiKey.slice(-4)}` : ''
   const memberSinceDate = memberSince ? memberSince.slice(0, 10) : ''
@@ -92,17 +93,35 @@ export default function SettingsScreen({ navigation }) {
       <SectionTitle icon="key">{t('apiKey')}</SectionTitle>
       <View style={styles.card}>
         {!editing && apiKey ? (
-          <View style={[styles.keyRow, isRTL && styles.rtl]}>
-            <View style={[styles.keyMaskRow, isRTL && styles.rtl]}>
-              <Feather name="check-circle" size={18} color={theme.success} />
-              <Text style={styles.keyMask}>{masked}</Text>
+          <View>
+            <View style={[styles.keyRow, isRTL && styles.rtl]}>
+              <View style={[styles.keyMaskRow, isRTL && styles.rtl]}>
+                <Feather name="check-circle" size={18} color={theme.success} />
+                <Text style={styles.keyMask}>{masked}</Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.changeBtn, isRTL && styles.rtl]}
+                onPress={() => setEditing(true)}
+              >
+                <Feather name="edit-2" size={15} color={theme.gold} />
+                <Text style={styles.changeText}>{t('changeKey')}</Text>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity onPress={() => setEditing(true)}>
-              <Feather name="edit-2" size={18} color={theme.gold} />
-            </TouchableOpacity>
           </View>
         ) : (
           <View>
+            <View style={[styles.requiredBanner, isRTL && styles.rtl]}>
+              <Feather name="alert-circle" size={18} color={theme.warning} />
+              <Text style={[styles.requiredText, { textAlign: isRTL ? 'right' : 'left' }]}>
+                {t('apiKeyRequired')}
+              </Text>
+            </View>
+            <Text style={[styles.instructions, { textAlign: isRTL ? 'right' : 'left' }]}>
+              {t('apiKeyInstructions')}
+            </Text>
+            <Text style={[styles.linkText, { textAlign: isRTL ? 'right' : 'left' }]}>
+              {t('apiKeyGetLink')}
+            </Text>
             <View style={[styles.inputWrap, isRTL && styles.rtl]}>
               <Feather name="key" size={18} color={theme.textMuted} />
               <TextInput
@@ -113,8 +132,11 @@ export default function SettingsScreen({ navigation }) {
                 onChangeText={setKeyInput}
                 autoCapitalize="none"
                 autoCorrect={false}
-                secureTextEntry
+                secureTextEntry={!showKey}
               />
+              <TouchableOpacity onPress={() => setShowKey((s) => !s)}>
+                <Feather name={showKey ? 'eye-off' : 'eye'} size={18} color={theme.textMuted} />
+              </TouchableOpacity>
             </View>
             <TouchableOpacity
               style={[styles.saveBtn, !keyInput.trim() && { opacity: 0.4 }]}
@@ -127,6 +149,26 @@ export default function SettingsScreen({ navigation }) {
         )}
         {saved && <Text style={styles.savedHint}>{t('keySaved')}</Text>}
       </View>
+
+      <SectionTitle icon="trending-up">{t('financialProfile')}</SectionTitle>
+      <TouchableOpacity
+        style={[styles.navRow, isRTL && styles.rtl]}
+        onPress={() => navigation.navigate('FinancialProfile')}
+        activeOpacity={0.85}
+      >
+        <View style={[styles.navLeft, isRTL && styles.rtl]}>
+          <View style={styles.navIcon}>
+            <Feather name="trending-up" size={18} color={theme.gold} />
+          </View>
+          <View style={{ alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
+            <Text style={styles.navTitle}>{t('financialProfile')}</Text>
+            <Text style={styles.navDesc} numberOfLines={1}>
+              {t('financialProfileDesc')}
+            </Text>
+          </View>
+        </View>
+        <Feather name={isRTL ? 'chevron-left' : 'chevron-right'} size={20} color={theme.textMuted} />
+      </TouchableOpacity>
 
       <SectionTitle icon="globe">{t('language')}</SectionTitle>
       <View style={styles.card}>
@@ -206,6 +248,43 @@ const styles = StyleSheet.create({
   keyRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   keyMaskRow: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
   keyMask: { color: theme.text, fontSize: 14, fontFamily: 'Courier', flexShrink: 1 },
+  changeBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  changeText: { color: theme.gold, fontSize: 13, fontWeight: '700' },
+  requiredBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: `${theme.warning}18`,
+    borderWidth: 1,
+    borderColor: `${theme.warning}55`,
+    borderRadius: theme.radius,
+    padding: 12,
+    marginBottom: 14,
+  },
+  requiredText: { color: theme.text, fontSize: 13, fontWeight: '700', flex: 1 },
+  instructions: { color: theme.textMuted, fontSize: 13, lineHeight: 20, marginBottom: 6 },
+  linkText: { color: theme.gold, fontSize: 13, fontWeight: '600', marginBottom: 14 },
+  navRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: theme.bgCard,
+    borderRadius: theme.radiusLg,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: theme.border,
+  },
+  navLeft: { flexDirection: 'row', alignItems: 'center', gap: 14, flex: 1 },
+  navIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: `${theme.gold}22`,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  navTitle: { color: theme.text, fontSize: 15, fontWeight: '700' },
+  navDesc: { color: theme.textMuted, fontSize: 12, marginTop: 3, maxWidth: 220 },
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',

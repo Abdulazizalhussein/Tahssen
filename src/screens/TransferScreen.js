@@ -92,7 +92,7 @@ export default function TransferScreen({ navigation }) {
   }, [apiKey, beneficiary, amount, iban, isNewBeneficiary, t])
 
   const runAssessment = useCallback(
-    async (history) => {
+    async (history, isPersonallyKnown = false) => {
       setStep(STEP.ASSESS)
       setBusy(true)
       setError(null)
@@ -109,6 +109,7 @@ export default function TransferScreen({ navigation }) {
           currentBalance: balance,
           monthlySpent,
           monthlyBudget,
+          isPersonallyKnown,
         })
         setAssessment(res)
       } catch (e) {
@@ -129,14 +130,16 @@ export default function TransferScreen({ navigation }) {
     setBusy(true)
     setError(null)
     try {
-      const { question, done } = await nextQuestion(apiKey, {
+      const { question, done, isPersonallyKnown } = await nextQuestion(apiKey, {
         beneficiary,
         amount,
         iban,
         isNewBeneficiary,
         history,
       })
-      if (done || !question) {
+      if (isPersonallyKnown) {
+        await runAssessment(history, true)
+      } else if (done || !question) {
         await runAssessment(history)
       } else {
         setMessages([...history, { role: 'assistant', content: question }])
@@ -256,6 +259,8 @@ export default function TransferScreen({ navigation }) {
                 <Text style={styles.assessLoadingText}>{t('analyzing')}</Text>
                 {error && <ErrorBox message={error} />}
               </View>
+            ) : assessment.isPersonallyKnown ? (
+              <KnownPersonView t={t} onConfirm={confirm} />
             ) : (
               <AssessmentView
                 assessment={assessment}
@@ -466,6 +471,21 @@ function AssessmentView({ assessment, t, isRTL, onConfirm, onBlock }) {
   )
 }
 
+function KnownPersonView({ t, onConfirm }) {
+  return (
+    <View style={styles.knownWrap}>
+      <View style={styles.knownIcon}>
+        <Feather name="check-circle" size={48} color={theme.success} />
+      </View>
+      <Text style={styles.knownTitle}>{t('safeKnownPerson')}</Text>
+      <TouchableOpacity style={styles.safeBtn} onPress={onConfirm} activeOpacity={0.85}>
+        <Feather name="check-circle" size={18} color={theme.bg} />
+        <Text style={styles.safeBtnText}>{t('confirmTransfer')}</Text>
+      </TouchableOpacity>
+    </View>
+  )
+}
+
 function ListLine({ text, icon, color, isRTL }) {
   return (
     <View style={[styles.listLine, isRTL && styles.rtl]}>
@@ -612,6 +632,23 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   reasonText: { color: theme.text, fontSize: 14, lineHeight: 23 },
+  knownWrap: { alignItems: 'center', paddingVertical: 24 },
+  knownIcon: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: `${theme.success}22`,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  knownTitle: {
+    color: theme.text,
+    fontSize: 20,
+    fontWeight: '800',
+    marginBottom: 24,
+    textAlign: 'center',
+  },
   safeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -621,6 +658,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: theme.radius,
     marginTop: 8,
+    alignSelf: 'stretch',
   },
   safeBtnText: { color: theme.bg, fontSize: 15, fontWeight: '700' },
   blockBtn: {

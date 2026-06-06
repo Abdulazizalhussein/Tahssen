@@ -17,7 +17,17 @@ import { generateInsights, computeStats } from '../agents/chatAgent'
 
 export default function AnalyticsScreen({ navigation }) {
   const account = useAccount()
-  const { apiKey, transactions, formatMoney, t, isRTL, lang } = account
+  const {
+    apiKey,
+    transactions,
+    formatMoney,
+    monthlyIncome,
+    totalFixedExpenses,
+    monthlySpent,
+    t,
+    isRTL,
+    lang,
+  } = account
   const insets = useSafeAreaInsets()
   const [data, setData] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -87,6 +97,25 @@ export default function AnalyticsScreen({ navigation }) {
           <RiskMeter score={data ? 100 - data.healthScore : 0} label={`${data?.healthScore ?? 0}/100`} />
         )}
       </View>
+
+      <SectionTitle icon="bar-chart-2">{t('budgetBreakdown')}</SectionTitle>
+      {monthlyIncome > 0 ? (
+        <BudgetBreakdown
+          income={monthlyIncome}
+          fixed={totalFixedExpenses}
+          variable={monthlySpent}
+          formatMoney={formatMoney}
+          t={t}
+          isRTL={isRTL}
+        />
+      ) : (
+        <View style={[styles.incomeBanner, isRTL && styles.rtl]}>
+          <Feather name="alert-circle" size={18} color={theme.warning} />
+          <Text style={[styles.incomeBannerText, { textAlign: isRTL ? 'right' : 'left' }]}>
+            {t('setupIncomeBanner')}
+          </Text>
+        </View>
+      )}
 
       <SectionTitle icon="pie-chart">{t('spendingBreakdown')}</SectionTitle>
       <View style={styles.statsRow}>
@@ -161,6 +190,45 @@ export default function AnalyticsScreen({ navigation }) {
   )
 }
 
+function BudgetBreakdown({ income, fixed, variable, formatMoney, t, isRTL }) {
+  const remaining = income - fixed - variable
+  const max = Math.max(income, fixed + variable, 1)
+  const rows = [
+    { label: t('income'), value: income, color: theme.teal },
+    { label: t('fixed'), value: fixed, color: theme.danger },
+    { label: t('variableSpending'), value: variable, color: theme.warning },
+    {
+      label: t('remaining'),
+      value: remaining,
+      color: remaining >= 0 ? theme.success : theme.danger,
+    },
+  ]
+  return (
+    <View style={styles.budgetCard}>
+      {rows.map((r, i) => (
+        <View key={i} style={[styles.budgetRow, i > 0 && { marginTop: 14 }]}>
+          <View style={[styles.budgetLabelRow, isRTL && styles.rtl]}>
+            <Text style={styles.budgetLabel}>{r.label}</Text>
+            <Text style={[styles.budgetValue, { color: r.color }]}>
+              {formatMoney(r.value)} {t('currency')}
+            </Text>
+          </View>
+          <View style={styles.budgetTrack}>
+            <View
+              style={{
+                height: 10,
+                borderRadius: 5,
+                backgroundColor: r.color,
+                width: `${Math.min(100, (Math.abs(r.value) / max) * 100)}%`,
+              }}
+            />
+          </View>
+        </View>
+      ))}
+    </View>
+  )
+}
+
 function StatCard({ label, value, icon, color }) {
   return (
     <View style={styles.statCard}>
@@ -200,6 +268,34 @@ const styles = StyleSheet.create({
     borderColor: theme.border,
   },
   cardLabel: { color: theme.textMuted, fontSize: 13, marginBottom: 14 },
+  budgetCard: {
+    backgroundColor: theme.bgCard,
+    borderRadius: theme.radiusLg,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: theme.border,
+  },
+  budgetRow: {},
+  budgetLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  budgetLabel: { color: theme.textMuted, fontSize: 13 },
+  budgetValue: { fontSize: 14, fontWeight: '700' },
+  budgetTrack: { height: 10, backgroundColor: theme.border, borderRadius: 5, overflow: 'hidden' },
+  incomeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: `${theme.warning}14`,
+    borderWidth: 1,
+    borderColor: `${theme.warning}55`,
+    borderRadius: theme.radius,
+    padding: 14,
+  },
+  incomeBannerText: { color: theme.text, fontSize: 13, flex: 1, lineHeight: 19 },
   statsRow: { flexDirection: 'row', gap: 12 },
   statCard: {
     flex: 1,

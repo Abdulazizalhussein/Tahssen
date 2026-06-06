@@ -22,8 +22,27 @@ export async function analyzeTransfer(
     currentBalance,
     monthlySpent,
     monthlyBudget,
+    isPersonallyKnown = false,
   }
 ) {
+  // If personally known, skip deep analysis and return low risk.
+  if (isPersonallyKnown) {
+    return {
+      riskScore: 5,
+      riskLevel: 'low',
+      isPersonallyKnown: true,
+      isNewBeneficiary: previousTransfers.length === 0,
+      hasPreviousTransfers: previousTransfers.length > 0,
+      previousTransferCount: previousTransfers.length,
+      previousTotalAmount: previousTransfers.reduce((s, p) => s + (Number(p.amount) || 0), 0),
+      recommendation: 'allow',
+      reasoning: 'المستفيد معروف شخصياً للمرسل. التحويل آمن.',
+      reasoningEn: 'Beneficiary is personally known. Transfer is safe.',
+      redFlags: [],
+      predictions: ['شخص معروف — لا توجد مخاطر'],
+    }
+  }
+
   const client = getClient(apiKey)
 
   const payload = {
@@ -61,6 +80,7 @@ export async function analyzeTransfer(
   return {
     riskScore: clamp(parsed.riskScore),
     riskLevel: parsed.riskLevel || levelFromScore(clamp(parsed.riskScore)),
+    isPersonallyKnown: false,
     isNewBeneficiary: !!parsed.isNewBeneficiary,
     hasPreviousTransfers: !!parsed.hasPreviousTransfers,
     previousTransferCount: Number(parsed.previousTransferCount) || 0,

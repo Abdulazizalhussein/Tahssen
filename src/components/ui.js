@@ -31,6 +31,21 @@ export function NoApiKey({ onGoSettings }) {
   )
 }
 
+export function ApiKeyBlocker({ onGoSettings }) {
+  const { t, isRTL } = useAccount()
+  return (
+    <View style={[styles.blocker, isRTL && styles.rtl]}>
+      <Feather name="alert-circle" size={22} color={theme.warning} />
+      <Text style={[styles.blockerText, { textAlign: isRTL ? 'right' : 'left' }]}>
+        {t('aiNeedsKey')}
+      </Text>
+      <TouchableOpacity style={styles.blockerBtn} onPress={onGoSettings} activeOpacity={0.85}>
+        <Text style={styles.blockerBtnText}>{t('settingsArrow')}</Text>
+      </TouchableOpacity>
+    </View>
+  )
+}
+
 export function ErrorBox({ message, onRetry }) {
   const { t } = useAccount()
   return (
@@ -103,6 +118,24 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius,
   },
   noKeyBtnText: { color: theme.bg, fontSize: 15, fontWeight: '700' },
+  blocker: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: `${theme.warning}14`,
+    borderWidth: 1,
+    borderColor: `${theme.warning}55`,
+    borderRadius: theme.radius,
+    padding: 14,
+  },
+  blockerText: { color: theme.text, fontSize: 13, flex: 1, lineHeight: 19 },
+  blockerBtn: {
+    backgroundColor: theme.warning,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: theme.radius,
+  },
+  blockerBtnText: { color: theme.bg, fontSize: 13, fontWeight: '700' },
   errorBox: {
     flexDirection: 'row',
     alignItems: 'center',

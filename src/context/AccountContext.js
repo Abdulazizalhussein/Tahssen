@@ -16,6 +16,12 @@ import {
   getTransactions,
   getMonthlySpent,
   resetUserData,
+  updateMonthlyIncome,
+  addFixedExpense,
+  getFixedExpenses,
+  deleteFixedExpense,
+  updateFixedExpense,
+  getTotalFixedExpenses,
 } from '../db/database'
 
 const LANG_KEY = 'tahseen.lang.v1'
@@ -30,6 +36,9 @@ export function AccountProvider({ children }) {
   const [balance, setBalance] = useState(0)
   const [monthlyBudget, setMonthlyBudget] = useState(8500)
   const [monthlySpent, setMonthlySpent] = useState(0)
+  const [monthlyIncome, setMonthlyIncome] = useState(0)
+  const [fixedExpenses, setFixedExpenses] = useState([])
+  const [totalFixedExpenses, setTotalFixedExpenses] = useState(0)
   const [transactions, setTransactions] = useState([])
   const [apiKey, setApiKeyState] = useState(null)
   const [lang, setLang] = useState('ar')
@@ -38,12 +47,20 @@ export function AccountProvider({ children }) {
   const loadUser = useCallback(async (id) => {
     const user = await getUserById(id)
     if (!user) return false
-    const [txs, spent] = await Promise.all([getTransactions(id), getMonthlySpent(id)])
+    const [txs, spent, expenses, totalFixed] = await Promise.all([
+      getTransactions(id),
+      getMonthlySpent(id),
+      getFixedExpenses(id),
+      getTotalFixedExpenses(id),
+    ])
     setUserId(user.id)
     setUserName(user.name)
     setMemberSince(user.created_at || '')
     setBalance(user.balance)
     setMonthlyBudget(user.monthly_budget)
+    setMonthlyIncome(user.monthly_income || 0)
+    setFixedExpenses(expenses)
+    setTotalFixedExpenses(totalFixed)
     setTransactions(txs)
     setMonthlySpent(spent)
     return true
@@ -56,10 +73,8 @@ export function AccountProvider({ children }) {
         const storedLang = await AsyncStorage.getItem(LANG_KEY)
         if (storedLang) setLang(storedLang)
 
-        const envKey = process.env.EXPO_PUBLIC_OPENAI_KEY
         const savedKey = await SecureStore.getItemAsync(API_KEY_NAME)
-        const keyToUse = savedKey || envKey || null
-        if (keyToUse && !savedKey) await SecureStore.setItemAsync(API_KEY_NAME, keyToUse)
+        const keyToUse = savedKey || null
         if (keyToUse) setApiKeyState(keyToUse)
 
         const session = await getSession()
@@ -102,8 +117,57 @@ export function AccountProvider({ children }) {
     setMemberSince('')
     setBalance(0)
     setMonthlySpent(0)
+    setMonthlyIncome(0)
+    setFixedExpenses([])
+    setTotalFixedExpenses(0)
     setTransactions([])
   }, [])
+
+  const refreshFixedExpenses = useCallback(async (id) => {
+    const [expenses, total] = await Promise.all([
+      getFixedExpenses(id),
+      getTotalFixedExpenses(id),
+    ])
+    setFixedExpenses(expenses)
+    setTotalFixedExpenses(total)
+  }, [])
+
+  const saveMonthlyIncome = useCallback(
+    async (income) => {
+      if (!userId) return
+      const value = Number(income) || 0
+      await updateMonthlyIncome(userId, value)
+      setMonthlyIncome(value)
+    },
+    [userId]
+  )
+
+  const addExpense = useCallback(
+    async (expense) => {
+      if (!userId) return
+      await addFixedExpense(userId, expense)
+      await refreshFixedExpenses(userId)
+    },
+    [userId, refreshFixedExpenses]
+  )
+
+  const removeExpense = useCallback(
+    async (id) => {
+      if (!userId) return
+      await deleteFixedExpense(id)
+      await refreshFixedExpenses(userId)
+    },
+    [userId, refreshFixedExpenses]
+  )
+
+  const editExpense = useCallback(
+    async (id, expense) => {
+      if (!userId) return
+      await updateFixedExpense(id, expense)
+      await refreshFixedExpenses(userId)
+    },
+    [userId, refreshFixedExpenses]
+  )
 
   const setApiKey = useCallback(async (key) => {
     const trimmed = (key || '').trim()
@@ -206,6 +270,8 @@ export function AccountProvider({ children }) {
     [lang]
   )
 
+  const discretionaryBudget = monthlyIncome - totalFixedExpenses - monthlySpent
+
   const value = useMemo(
     () => ({
       userId,
@@ -214,6 +280,10 @@ export function AccountProvider({ children }) {
       balance,
       monthlyBudget,
       monthlySpent,
+      monthlyIncome,
+      fixedExpenses,
+      totalFixedExpenses,
+      discretionaryBudget,
       transactions,
       apiKey,
       lang,
@@ -229,6 +299,10 @@ export function AccountProvider({ children }) {
       executeTransfer,
       blockTransfer,
       resetAccount,
+      saveMonthlyIncome,
+      addExpense,
+      removeExpense,
+      editExpense,
       t,
       formatMoney,
     }),
@@ -239,6 +313,10 @@ export function AccountProvider({ children }) {
       balance,
       monthlyBudget,
       monthlySpent,
+      monthlyIncome,
+      fixedExpenses,
+      totalFixedExpenses,
+      discretionaryBudget,
       transactions,
       apiKey,
       lang,
@@ -252,6 +330,10 @@ export function AccountProvider({ children }) {
       executeTransfer,
       blockTransfer,
       resetAccount,
+      saveMonthlyIncome,
+      addExpense,
+      removeExpense,
+      editExpense,
       t,
       formatMoney,
     ]

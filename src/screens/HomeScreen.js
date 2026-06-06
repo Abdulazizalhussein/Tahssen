@@ -6,7 +6,7 @@ import { theme } from '../theme'
 import { useAccount } from '../context/AccountContext'
 import BalanceCard from '../components/BalanceCard'
 import TransactionItem from '../components/TransactionItem'
-import { SectionTitle } from '../components/ui'
+import { SectionTitle, ApiKeyBlocker } from '../components/ui'
 import { accountStatusLine } from '../agents/chatAgent'
 import { MissingApiKeyError } from '../agents/client'
 
@@ -69,16 +69,22 @@ export default function HomeScreen({ navigation }) {
         </View>
       </View>
 
-      <View style={styles.statusBanner}>
-        <Feather name="activity" size={16} color={theme.teal} />
-        {loadingStatus ? (
-          <ActivityIndicator size="small" color={theme.teal} />
-        ) : (
-          <Text style={[styles.statusText, { textAlign: isRTL ? 'right' : 'left' }]}>
-            {status || t('accountHealth')}
-          </Text>
-        )}
-      </View>
+      {!apiKey ? (
+        <View style={{ marginTop: 18 }}>
+          <ApiKeyBlocker onGoSettings={() => navigation.navigate('Settings')} />
+        </View>
+      ) : (
+        <View style={styles.statusBanner}>
+          <Feather name="activity" size={16} color={theme.teal} />
+          {loadingStatus ? (
+            <ActivityIndicator size="small" color={theme.teal} />
+          ) : (
+            <Text style={[styles.statusText, { textAlign: isRTL ? 'right' : 'left' }]}>
+              {status || t('accountHealth')}
+            </Text>
+          )}
+        </View>
+      )}
 
       <View style={{ marginTop: 16 }}>
         <BalanceCard />

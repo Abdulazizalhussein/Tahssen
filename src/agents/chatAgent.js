@@ -1,6 +1,15 @@
 import { getClient, MODEL } from './client'
 
-function systemPrompt({ balance, monthlyBudget, monthlySpent, transactions, lang }) {
+function systemPrompt({
+  balance,
+  monthlyBudget,
+  monthlySpent,
+  monthlyIncome = 0,
+  fixedExpenses = [],
+  totalFixedExpenses = 0,
+  transactions,
+  lang,
+}) {
   const recent = transactions.slice(0, 10).map((t) => ({
     amount: t.amount,
     beneficiary: t.beneficiary,
@@ -10,18 +19,29 @@ function systemPrompt({ balance, monthlyBudget, monthlySpent, transactions, lang
     date: new Date(t.timestamp).toISOString().slice(0, 10),
   }))
 
+  const fixedList = fixedExpenses.map((e) => `${e.name}: ${e.amount} SAR`).join(', ') || 'none'
+  const discretionary = monthlyIncome - totalFixedExpenses
+  const remaining = monthlyIncome - totalFixedExpenses - monthlySpent
+
   return `You are Tahseen, an AI financial protection agent for Alinma Bank.
 You have access to the user's live account data:
 - Current balance: ${balance} SAR
+- Monthly income: ${monthlyIncome} SAR
+- Fixed expenses: ${fixedList}
+- Total fixed commitments: ${totalFixedExpenses} SAR
+- Available discretionary budget: ${discretionary} SAR
+- Already spent this month: ${monthlySpent} SAR
+- Remaining discretionary budget: ${remaining} SAR
 - Monthly budget: ${monthlyBudget} SAR
-- Monthly spent: ${monthlySpent} SAR
 - Recent transactions (newest first): ${JSON.stringify(recent)}
 - Today's date: ${new Date().toISOString().slice(0, 10)}
 
 Answer ${lang === 'en' ? 'in English' : 'in Arabic primarily'}. Be specific and use the
 actual numbers above. Give concrete predictions, warnings, and financial advice based on
-their real data. Keep answers concise and practical. Do not invent transactions that are
-not in the data. You never execute transfers yourself; you only advise.`
+their real data. When income is set, anchor advice on the discretionary budget (income
+minus fixed commitments) rather than total balance. Keep answers concise and practical.
+Do not invent transactions that are not in the data. You never execute transfers yourself;
+you only advise.`
 }
 
 export async function chat(apiKey, account, messages) {
@@ -54,7 +74,16 @@ Base everything strictly on the provided numbers. Do not invent data.`
 export async function generateInsights(apiKey, account) {
   const client = getClient(apiKey)
 
-  const { balance, monthlyBudget, monthlySpent, transactions, lang } = account
+  const {
+    balance,
+    monthlyBudget,
+    monthlySpent,
+    monthlyIncome = 0,
+    fixedExpenses = [],
+    totalFixedExpenses = 0,
+    transactions,
+    lang,
+  } = account
   const stats = computeStats(transactions)
 
   const payload = {
@@ -62,6 +91,11 @@ export async function generateInsights(apiKey, account) {
     balance,
     monthlyBudget,
     monthlySpent,
+    monthlyIncome,
+    fixedExpenses: fixedExpenses.map((e) => ({ name: e.name, amount: e.amount })),
+    totalFixedExpenses,
+    discretionaryBudget: monthlyIncome - totalFixedExpenses,
+    remainingDiscretionary: monthlyIncome - totalFixedExpenses - monthlySpent,
     today: new Date().toISOString().slice(0, 10),
     dayOfMonth: new Date().getDate(),
     stats,
