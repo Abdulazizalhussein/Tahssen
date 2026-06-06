@@ -112,6 +112,11 @@ export default function TransferScreen({ navigation }) {
   const handleQuestionResult = useCallback(
     async (history, result) => {
       const reasonText = result.reason || REASON_TEXT[result.reasonKey] || ''
+      if (result.isPersonallyKnown) {
+        setAssessment({ approved: false, isPersonallyKnown: true, riskScore: result.riskScore ?? 5 })
+        setStep(STEP.ASSESS)
+        return
+      }
       if (result.skipRisk) {
         setAssessment({ approved: true, approvalKind: 'skip', riskScore: result.riskScore ?? 8, reasonKey: result.reasonKey })
         setStep(STEP.ASSESS)
