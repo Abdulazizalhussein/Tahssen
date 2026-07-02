@@ -1,6 +1,6 @@
 # تحصين Tahseen — AI-Powered Financial Protection
 
-**Live demo:** https://tahssen.vercel.app
+**🔗 Live app:** https://tahssen.vercel.app
 
 Tahseen is a demo banking app that intercepts outgoing transfers and interrogates them with adaptive AI questions before they go through. Every transfer triggers a conversation: the AI asks about the purpose, the relationship to the recipient, and any red flags — then scores the fraud risk, recommends whether to allow or block, and automatically quarantines beneficiaries tied to confirmed scams. The app is Arabic-first with full English support, built as a React + Express monorepo, and stores all account data locally in the browser so nothing touches a real bank.
 
@@ -18,6 +18,18 @@ Tahseen is a demo banking app that intercepts outgoing transfers and interrogate
 
 ---
 
+## How it works
+
+A transfer moves through a five-stage pipeline:
+
+1. **Beneficiary check** — blocked beneficiaries are stopped before anything else; previously-trusted ones are fast-tracked
+2. **Intent review** — the interrogation agent opens a short conversation about the transfer's purpose
+3. **Instant signals** — deterministic rules run first on every answer: known-person phrases approve instantly, crypto/investment promises and social-media strangers block instantly
+4. **AI risk analysis** — anything ambiguous goes to the fraud agent, which weighs the beneficiary type, amount, stated reasons, and transfer history against a scoring rubric
+5. **Verdict** — safe transfers confirm in one tap; risky ones show the full analysis (score, red flags, predictions) and either warn or block, auto-quarantining the beneficiary on a fraud verdict
+
+---
+
 ## Architecture
 
 ```mermaid
@@ -27,7 +39,7 @@ graph LR
     end
 
     subgraph Server
-        BE["backend/\nExpress API\n:3001"]
+        BE["backend/\nExpress API"]
         SVC["service/agents/\ninterrogationAgent\nfraudAgent\nchatAgent"]
     end
 
@@ -35,85 +47,32 @@ graph LR
 
     FE -->|"POST /api/ai/*"| BE
     BE --> SVC
-    SVC -->|"OPENAI_API_KEY\n(backend/.env only)"| OAI
+    SVC -->|"server-side key only"| OAI
 ```
 
-The API key never leaves the server. The frontend has no access to it.
+The OpenAI key lives only on the server. The frontend never sees it.
 
 ### Repo structure
 
 ```
-tahseen/
-├── package.json          # npm workspaces root; scripts: dev / build / start
-├── frontend/             # React 19 + Vite 6 SPA — all UI, routing, localStorage state
+├── frontend/             # React 19 + Vite SPA — all UI, routing, localStorage state
 │   └── src/
-│       ├── pages/        # SplashPage, AuthPage, HomePage, TransferPage, ChatPage,
-│       │                 #   AnalyticsPage, BeneficiariesPage, SettingsPage
-│       ├── agents/       # client-side transferAgent (instant signals), thin wrappers
-│       │                 #   for fraudAgent and chatAgent that call the backend API
-│       ├── store/        # db.js (localStorage), AccountContext (global state + actions)
-│       └── api/          # client.js — typed fetch wrappers for /api/ai/* endpoints
-├── backend/              # Express API server — the only layer that touches OpenAI
-│   ├── app.js            # cors, json, /api mount, static frontend dist + SPA fallback
-│   ├── server.js         # entry point — app.listen on PORT
-│   ├── routes/ai.js      # POST /api/ai/interrogate, /analyze, /chat; GET /api/health
-│   └── .env.example      # OPENAI_API_KEY, OPENAI_MODEL, PORT
-└── service/              # Pure ESM AI-agent library (no Express); used only by backend
+│       ├── pages/        # Splash, Auth, Home, Transfer, Chat, Analytics,
+│       │                 #   Beneficiaries, Settings
+│       ├── agents/       # client-side instant-signal logic + API wrappers
+│       ├── store/        # localStorage data layer + global account state
+│       └── api/          # fetch wrappers for the backend endpoints
+├── backend/              # Express API — the only layer that touches OpenAI
+│   └── routes/ai.js      # /api/ai/interrogate, /analyze, /chat + /api/health
+└── service/              # AI-agent library, used only by the backend
     └── agents/
-        ├── llm.js               # getClient(), AiNotConfiguredError, MODEL env var
-        ├── interrogationAgent.js # adaptive conversation manager, instant-signal lists
-        ├── fraudAgent.js        # short-circuits + GPT risk rubric, 0-100 score
-        └── chatAgent.js         # financial advisor, account-grounded system prompt
+        ├── interrogationAgent.js # adaptive conversation manager
+        ├── fraudAgent.js         # deterministic short-circuits + GPT risk rubric
+        └── chatAgent.js          # financial advisor grounded in account data
 ```
-
----
-
-## Getting started
-
-### Prerequisites
-
-- Node >= 20
-- An OpenAI API key (optional — the app degrades gracefully without one; see note below)
-
-### Install
-
-```bash
-git clone https://github.com/Abdulazizalhussein/Tahssen.git
-cd Tahssen
-npm install
-```
-
-### Configure
-
-```bash
-cp backend/.env.example backend/.env
-# Open backend/.env and set your key:
-# OPENAI_API_KEY=sk-...
-```
-
-### Run in development
-
-```bash
-npm run dev
-# frontend → http://localhost:5173
-# backend  → http://localhost:3001
-```
-
-Vite proxies all `/api` requests to the backend so there is no CORS friction in development.
-
-### Production build
-
-```bash
-npm run build   # bundles frontend into frontend/dist/
-npm start       # serves frontend/dist/ + API from a single Express server on :3001
-```
-
-### Without an API key
-
-The app degrades gracefully. Instant-signal rules (known-person detection, crypto-phrase blocking, social-stranger detection) still run on the client. Backend AI endpoints return a 503 with `AI_NOT_CONFIGURED`, and the frontend falls back to a cautious mid-range risk score so the user is never silently waved through.
 
 ---
 
 ## Disclaimer
 
-This is a demo project. Bank account data is fake and stored only in your browser's localStorage — no real accounts, no real money, no real transactions. Authentication is demo-grade (SHA-256 of password + a static salt). Do not use this code as the basis for a production banking or payments product.
+This is a demo project. Bank account data is fake and stored only in your browser's localStorage — no real accounts, no real money, no real transactions. Do not use this code as the basis for a production banking or payments product.
