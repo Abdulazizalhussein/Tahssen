@@ -1,0 +1,337 @@
+/* ============================================================
+   SettingsPage — account, financial profile, language, about
+   ============================================================ */
+
+.settings-scroll {
+  /* .page-scroll from global.css handles padding + scroll */
+  animation: page-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.settings-h1 {
+  color: var(--text);
+  font-size: 26px;
+  font-weight: 800;
+  margin-block-end: var(--sp-5);
+  text-align: start;
+}
+
+/* --- User card --- */
+
+.settings-user-card {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-5);
+  margin-block-end: var(--sp-1);
+}
+
+.settings-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--gold-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid var(--gold-border);
+}
+
+.settings-user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-align: start;
+}
+
+.settings-user-name {
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.settings-user-since {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* --- Financial profile --- */
+
+.settings-profile-desc {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-block-end: var(--sp-4);
+  text-align: start;
+  line-height: 1.6;
+}
+
+.settings-income-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  margin-block-end: var(--sp-4);
+  padding-block-end: var(--sp-4);
+  border-block-end: 1px solid var(--border);
+}
+
+.settings-income-label {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.settings-income-display {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.settings-income-value {
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.settings-income-edit {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.settings-income-input {
+  width: 130px;
+  padding-block: 8px;
+}
+
+.settings-fixed-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-block: var(--sp-2);
+  margin-block-end: var(--sp-3);
+}
+
+.settings-expenses-label {
+  margin-block-end: var(--sp-2);
+}
+
+.settings-no-expenses {
+  padding-block: var(--sp-3);
+  text-align: start;
+}
+
+/* --- Expense list --- */
+
+.settings-expense-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-block-end: var(--sp-3);
+}
+
+.settings-expense-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  background: var(--bg-card-light);
+  border-radius: var(--radius);
+  padding: 10px var(--sp-4);
+  border: 1px solid var(--border);
+  transition: border-color var(--transition);
+}
+
+.settings-expense-item:hover {
+  border-color: var(--border-light);
+}
+
+.settings-expense-info {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-expense-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: start;
+}
+
+.settings-expense-right {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  flex-shrink: 0;
+}
+
+.settings-expense-amount {
+  color: var(--gold);
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  margin-inline-end: var(--sp-1);
+}
+
+.settings-icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition);
+  color: var(--text-muted);
+}
+
+.settings-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+
+.settings-icon-btn--danger {
+  color: var(--danger);
+}
+
+.settings-icon-btn--danger:hover {
+  background: var(--danger-dim);
+  color: var(--danger);
+}
+
+.settings-icon-btn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 1px;
+}
+
+/* --- Add button --- */
+
+.settings-add-btn {
+  margin-block-start: var(--sp-2);
+}
+
+/* --- Expense form --- */
+
+.settings-expense-form {
+  background: var(--bg-card-light);
+  border-radius: var(--radius);
+  padding: var(--sp-4);
+  border: 1px solid var(--border-light);
+  margin-block-start: var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.settings-expense-form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-block-end: var(--sp-3);
+}
+
+.settings-suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-block-end: var(--sp-3);
+}
+
+.settings-chips-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.settings-form-actions {
+  display: flex;
+  gap: var(--sp-2);
+  margin-block-start: var(--sp-3);
+}
+
+/* --- Category select override (dark) --- */
+
+.settings-category-select {
+  color-scheme: dark;
+}
+
+/* --- Language --- */
+
+.settings-lang-row {
+  display: flex;
+  gap: var(--sp-3);
+}
+
+.settings-lang-btn {
+  flex: 1;
+  padding-block: 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 15px;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  text-align: center;
+  transition:
+    background var(--transition),
+    border-color var(--transition),
+    color var(--transition),
+    box-shadow var(--transition);
+}
+
+.settings-lang-btn--active {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #000;
+  box-shadow: 0 4px 16px rgba(201, 162, 39, 0.3);
+}
+
+.settings-lang-btn:not(.settings-lang-btn--active):hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--border-light);
+  color: var(--text);
+}
+
+.settings-lang-btn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* --- Account card rows --- */
+
+.settings-acc-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-block-end: var(--sp-4);
+}
+
+/* --- About text --- */
+
+.settings-about-text {
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.75;
+  text-align: start;
+}
+
+/* --- Sign out button --- */
+
+.settings-sign-out {
+  margin-block-start: var(--sp-8);
+  margin-block-end: var(--sp-3);
+  padding-block: 16px;
+  font-size: 15px;
+  font-weight: 700;
+}

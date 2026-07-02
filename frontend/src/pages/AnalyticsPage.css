@@ -1,0 +1,797 @@
+/* ============================================================
+   ANALYTICS PAGE — scoped to .analytics-* prefix
+   ============================================================ */
+
+.analytics-screen {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--sp-5);
+  padding-block-end: calc(var(--tab-height) + var(--sp-8));
+  animation: page-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@media (min-width: 900px) {
+  .analytics-screen {
+    padding-block-end: var(--sp-10);
+  }
+}
+
+/* ── Head row ── */
+.analytics-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.analytics-h1 {
+  color: var(--text);
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.analytics-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  background: var(--bg-card-light);
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-light);
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gold);
+  transition: background var(--transition), opacity var(--transition);
+  user-select: none;
+}
+
+.analytics-refresh-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.analytics-refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.analytics-refresh-btn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+
+/* ── Error margin ── */
+.analytics-error-wrap {
+  margin-block-start: var(--sp-4);
+}
+
+/* ── Health Score card ── */
+.analytics-health-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-block-start: var(--sp-5);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+}
+
+.analytics-card-label {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-block-end: var(--sp-4);
+}
+
+/* Health ring (inline SVG gauge) */
+.analytics-ring-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.analytics-ring-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.analytics-ring-score {
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.analytics-ring-sub {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-block-start: 3px;
+}
+
+/* Loading spinner within health card */
+.analytics-health-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-10) 0;
+}
+
+/* ── Breakdown head (section title + edit btn in same row) ── */
+.analytics-breakdown-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.analytics-breakdown-head .section-title {
+  margin-block-start: var(--sp-6);
+  margin-block-end: 0;
+}
+
+.analytics-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--teal);
+  margin-block-start: var(--sp-6);
+  padding: 4px var(--sp-2);
+  border-radius: var(--radius-sm);
+  transition: background var(--transition), opacity var(--transition);
+}
+
+.analytics-edit-btn:hover {
+  background: rgba(0, 133, 122, 0.1);
+}
+
+.analytics-edit-btn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* ── Budget breakdown card ── */
+.analytics-budget-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-5);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+}
+
+.analytics-budget-row {
+  margin-block-start: 0;
+}
+
+.analytics-budget-row + .analytics-budget-row {
+  margin-block-start: var(--sp-4);
+}
+
+.analytics-budget-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-block-end: var(--sp-2);
+}
+
+.analytics-budget-label {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.analytics-budget-value {
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.analytics-budget-track {
+  height: 8px;
+  background: var(--border);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.analytics-budget-fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Stats grid ── */
+.analytics-stats-row {
+  display: flex;
+  gap: var(--sp-3);
+}
+
+.analytics-stats-row + .analytics-stats-row {
+  margin-block-start: var(--sp-3);
+}
+
+.analytics-stat-card {
+  flex: 1;
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  padding: var(--sp-4);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+  min-width: 0;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.analytics-stat-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-block-end: var(--sp-3);
+  flex-shrink: 0;
+}
+
+.analytics-stat-value {
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
+.analytics-stat-label {
+  color: var(--text-muted);
+  font-size: 11px;
+  margin-block-start: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Insights card ── */
+.analytics-insight-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-4);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+}
+
+.analytics-insight-line {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding-block: var(--sp-3);
+}
+
+.analytics-insight-line + .analytics-insight-line {
+  border-block-start: 1px solid var(--border);
+}
+
+.analytics-insight-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--gold-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-block-start: 1px;
+}
+
+.analytics-insight-text {
+  color: var(--text);
+  font-size: 14px;
+  flex: 1;
+  line-height: 1.55;
+  text-align: start;
+}
+
+/* ── Month-end prediction card ── */
+.analytics-predict-card {
+  display: flex;
+  gap: var(--sp-4);
+  align-items: flex-start;
+  background: rgba(0, 133, 122, 0.07);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-5);
+  border: 1px solid rgba(0, 133, 122, 0.22);
+}
+
+.analytics-predict-icon {
+  flex-shrink: 0;
+  margin-block-start: 2px;
+}
+
+.analytics-predict-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.analytics-predict-text {
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.55;
+  text-align: start;
+}
+
+.analytics-predict-value {
+  color: var(--teal-light);
+  font-size: 18px;
+  font-weight: 800;
+  margin-block-start: var(--sp-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Risk history card ── */
+.analytics-risk-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-5);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.analytics-risk-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.analytics-risk-name {
+  color: var(--text);
+  font-size: 13px;
+  width: 88px;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+  text-align: start;
+}
+
+[dir="rtl"] .analytics-risk-name {
+  text-align: end;
+}
+
+.analytics-risk-track {
+  flex: 1;
+  height: 6px;
+  background: var(--border);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.analytics-risk-fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.analytics-risk-score {
+  font-size: 12px;
+  font-weight: 700;
+  width: 26px;
+  text-align: end;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Empty state ── */
+.analytics-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-3);
+  padding-block: var(--sp-8);
+  color: var(--text-hint);
+  font-size: 14px;
+}
+
+/* ── Onboarding / setup banner card ── */
+.analytics-onboard-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  padding: var(--sp-5);
+  margin-block-start: var(--sp-5);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-card);
+}
+
+.analytics-onboard-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  margin-block-end: var(--sp-5);
+}
+
+.analytics-bulb {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-sm);
+  background: var(--gold-dim);
+  border: 1px solid var(--gold-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.analytics-onboard-title {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.analytics-onboard-sub {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-block-start: 3px;
+  line-height: 1.5;
+}
+
+/* ── Field label (shared across forms) ── */
+.analytics-field-label {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  margin-block-end: var(--sp-2);
+  display: block;
+  text-align: start;
+}
+
+/* ── Input wrap with icon ── */
+.analytics-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: var(--radius);
+  padding-inline: var(--sp-4);
+  border: 1px solid var(--border-light);
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.analytics-input-wrap:focus-within {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px var(--gold-dim);
+}
+
+.analytics-input-wrap input {
+  flex: 1;
+  color: var(--text);
+  font-size: 16px;
+  padding-block: 13px;
+  background: none;
+  border: none;
+  outline: none;
+  font-family: var(--font);
+  text-align: start;
+}
+
+.analytics-input-wrap input::placeholder {
+  color: var(--text-hint);
+}
+
+/* ── Quick chips (onboarding) ── */
+.analytics-chips-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-block-start: var(--sp-4);
+}
+
+.analytics-quick-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 9px 13px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-light);
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: background var(--transition), border-color var(--transition), color var(--transition);
+  user-select: none;
+}
+
+.analytics-quick-chip:hover {
+  background: rgba(0, 133, 122, 0.1);
+  border-color: rgba(0, 133, 122, 0.35);
+  color: var(--text);
+}
+
+.analytics-quick-chip:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* ── Expense rows ── */
+.analytics-exp-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding-block: var(--sp-3);
+}
+
+.analytics-exp-row + .analytics-exp-row {
+  border-block-start: 1px solid var(--border);
+}
+
+.analytics-exp-name-col {
+  flex: 1;
+  min-width: 0;
+  text-align: start;
+}
+
+[dir="rtl"] .analytics-exp-name-col {
+  text-align: end;
+}
+
+.analytics-exp-name {
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.analytics-exp-cat {
+  color: var(--text-muted);
+  font-size: 11px;
+  margin-block-start: 2px;
+}
+
+.analytics-exp-amount {
+  color: var(--gold);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.analytics-trash-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  color: var(--danger);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition), color var(--transition);
+  flex-shrink: 0;
+}
+
+.analytics-trash-btn:hover {
+  background: var(--danger-dim);
+}
+
+.analytics-trash-btn:focus-visible {
+  outline: 2px solid var(--danger);
+  outline-offset: 2px;
+}
+
+.analytics-empty-exp {
+  color: var(--text-hint);
+  font-size: 13px;
+  padding-block: var(--sp-3);
+}
+
+/* ── Add expense btn ── */
+.analytics-add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  background: rgba(0, 133, 122, 0.08);
+  padding-block: 12px;
+  border-radius: var(--radius);
+  border: 1px dashed rgba(0, 133, 122, 0.3);
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--teal-light);
+  margin-block-start: var(--sp-4);
+  width: 100%;
+  transition: background var(--transition), border-color var(--transition);
+  user-select: none;
+}
+
+.analytics-add-btn:hover {
+  background: rgba(0, 133, 122, 0.15);
+  border-color: rgba(0, 133, 122, 0.5);
+}
+
+.analytics-add-btn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+
+/* ── Primary button ── */
+.analytics-primary-btn {
+  background: var(--teal);
+  height: 52px;
+  border-radius: var(--radius);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin-block-start: var(--sp-5);
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  transition: background var(--transition), opacity var(--transition), transform var(--transition), box-shadow var(--transition);
+  user-select: none;
+  box-shadow: 0 4px 16px rgba(0, 133, 122, 0.3);
+}
+
+.analytics-primary-btn:hover:not(:disabled) {
+  background: var(--teal-light);
+  box-shadow: 0 6px 20px rgba(0, 133, 122, 0.4);
+}
+
+.analytics-primary-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.analytics-primary-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.analytics-primary-btn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+
+/* ── Modal / drawer overlay ── */
+.analytics-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  z-index: 200;
+  animation: analytics-fade-in 160ms ease;
+}
+
+@keyframes analytics-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Bottom sheet */
+.analytics-sheet {
+  background: var(--bg-card);
+  border-start-start-radius: var(--radius-xl);
+  border-start-end-radius: var(--radius-xl);
+  padding: var(--sp-6);
+  padding-block-end: max(40px, env(safe-area-inset-bottom, 0px) + var(--sp-5));
+  max-height: 88dvh;
+  overflow-y: auto;
+  border-block-start: 1px solid var(--border-light);
+  animation: analytics-slide-up 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes analytics-slide-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+.analytics-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-block-end: var(--sp-5);
+}
+
+.analytics-sheet-title {
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.analytics-close-btn {
+  width: 34px;
+  height: 34px;
+  background: var(--bg-card-light);
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius);
+  transition: background var(--transition), color var(--transition);
+}
+
+.analytics-close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+}
+
+.analytics-close-btn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* ── Category chips (expense modal) ── */
+.analytics-cat-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.analytics-cat-chip {
+  padding: 8px 13px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-light);
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: background var(--transition), border-color var(--transition), color var(--transition);
+  user-select: none;
+}
+
+.analytics-cat-chip.active {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: #fff;
+}
+
+.analytics-cat-chip:hover:not(.active) {
+  background: rgba(0, 133, 122, 0.1);
+  border-color: rgba(0, 133, 122, 0.35);
+  color: var(--text);
+}
+
+.analytics-cat-chip:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* ── Spacing utilities ── */
+.analytics-mt-14 {
+  margin-block-start: 14px;
+}
+
+.analytics-mt-18 {
+  margin-block-start: 18px;
+}
+
+/* analytics-mt-0 is intentionally removed (was a misleading class with positive margin).
+   Callers should use inline style or a different class. */

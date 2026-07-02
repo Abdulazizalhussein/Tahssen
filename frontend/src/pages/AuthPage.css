@@ -1,0 +1,229 @@
+/* ============================================================
+   AuthPage — sign-in / sign-up screen
+   ============================================================ */
+
+.auth-screen {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  padding: var(--sp-6);
+}
+
+.auth-inner {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  animation: page-in 350ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* --- Brand block --- */
+
+.auth-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-block-end: var(--sp-8);
+}
+
+.auth-logo {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--bg-card-light);
+  border: 1px solid var(--gold-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-block-end: var(--sp-4);
+  box-shadow: var(--shadow-gold);
+}
+
+.auth-app-name {
+  color: var(--text);
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-align: center;
+  line-height: 1;
+}
+
+.auth-tagline {
+  color: var(--gold);
+  font-size: 14px;
+  font-weight: 600;
+  margin-block-start: var(--sp-2);
+  text-align: center;
+  opacity: 0.85;
+}
+
+/* --- Tabs --- */
+
+.auth-tabs {
+  display: flex;
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  padding: 4px;
+  border: 1px solid var(--border);
+  margin-block-end: var(--sp-5);
+  gap: 4px;
+}
+
+.auth-tab {
+  flex: 1;
+  padding: 11px var(--sp-4);
+  border-radius: calc(var(--radius) - 2px);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 15px;
+  font-weight: 700;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+  text-align: center;
+}
+
+.auth-tab--active {
+  background: var(--gold);
+  color: #000;
+  box-shadow: 0 2px 8px rgba(201, 162, 39, 0.3);
+}
+
+.auth-tab:not(.auth-tab--active):hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+}
+
+.auth-tab:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* --- Card --- */
+
+.auth-card {
+  padding: var(--sp-6);
+}
+
+.auth-card-title {
+  color: var(--text);
+  font-size: 20px;
+  font-weight: 800;
+  margin-block-end: var(--sp-5);
+}
+
+/* --- Input wrapper --- */
+
+.auth-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  background: var(--bg-card-light);
+  border-radius: var(--radius);
+  padding-inline: var(--sp-4);
+  border: 1px solid var(--border-light);
+  margin-block-end: var(--sp-3);
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.auth-input-wrap--focused {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px var(--gold-dim);
+}
+
+.auth-input-icon {
+  color: var(--text-hint);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  transition: color var(--transition);
+}
+
+.auth-input-icon--focused {
+  color: var(--gold);
+}
+
+.auth-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 16px;
+  font-family: var(--font);
+  padding-block: 14px;
+  outline: none;
+  text-align: start;
+  min-width: 0;
+}
+
+.auth-input::placeholder {
+  color: var(--text-hint);
+}
+
+.auth-eye-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition), background var(--transition);
+  flex-shrink: 0;
+  margin-inline-end: calc(-1 * var(--sp-2));
+}
+
+.auth-eye-btn:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.auth-eye-btn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* --- Error row --- */
+
+.auth-error {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--danger);
+  font-size: 13px;
+  margin-block-end: var(--sp-3);
+  margin-block-start: calc(-1 * var(--sp-1));
+  background: var(--danger-dim);
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius-sm);
+  padding: var(--sp-2) var(--sp-3);
+  text-align: start;
+  line-height: 1.5;
+}
+
+/* --- Submit button --- */
+
+.auth-submit {
+  margin-block-start: var(--sp-2);
+  padding-block: 16px;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+/* --- Responsive: mobile comfortable --- */
+
+@media (max-width: 480px) {
+  .auth-screen {
+    align-items: flex-start;
+    padding-block-start: var(--sp-12);
+  }
+
+  .auth-card {
+    padding: var(--sp-5);
+  }
+}

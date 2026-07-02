@@ -1,0 +1,471 @@
+/* ============================================================
+   TAHSEEN — Global Design Tokens + Shared Classes
+   Deep navy #001520 world, gold accents, Arabic-first RTL
+   ============================================================ */
+
+:root {
+  /* backgrounds */
+  --bg: #001520;
+  --bg-card: #002134;
+  --bg-card-light: #00334d;
+
+  /* brand */
+  --gold: #C9A227;
+  --gold-dim: rgba(201, 162, 39, 0.15);
+  --gold-border: rgba(201, 162, 39, 0.35);
+  --teal: #00857A;
+  --teal-light: #00A896;
+
+  /* semantic */
+  --danger: #D93025;
+  --danger-dim: rgba(217, 48, 37, 0.12);
+  --danger-border: rgba(217, 48, 37, 0.4);
+  --warning: #F5A623;
+  --warning-dim: rgba(245, 166, 35, 0.12);
+  --success: #1A7F5A;
+  --success-bright: #2ecc71;
+  --success-dim: rgba(46, 204, 113, 0.12);
+  --success-border: rgba(46, 204, 113, 0.4);
+
+  /* text */
+  --text: #FFFFFF;
+  --text-muted: rgba(255, 255, 255, 0.6);
+  --text-hint: rgba(255, 255, 255, 0.35);
+
+  /* borders */
+  --border: rgba(255, 255, 255, 0.07);
+  --border-light: rgba(255, 255, 255, 0.12);
+
+  /* radii */
+  --radius: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
+  --radius-sm: 8px;
+  --radius-pill: 999px;
+
+  /* typography */
+  --font: 'Tajawal', system-ui, sans-serif;
+
+  /* spacing scale (base 8) */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+  --sp-16: 64px;
+
+  /* shadows */
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.35);
+  --shadow-elevated: 0 8px 40px rgba(0, 0, 0, 0.5);
+  --shadow-gold: 0 0 24px rgba(201, 162, 39, 0.2);
+
+  /* transitions */
+  --transition: 180ms ease;
+  --transition-slow: 320ms ease;
+
+  /* layout */
+  --nav-width: 240px;
+  --content-max: 560px;
+  --tab-height: 72px;
+}
+
+/* ============================================================
+   MINIMAL RESET
+   ============================================================ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.6;
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+img, svg {
+  display: block;
+  max-width: 100%;
+}
+
+button, input, textarea, select {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ============================================================
+   CUSTOM SCROLLBAR
+   ============================================================ */
+
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-light);
+  border-radius: var(--radius-pill);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* ============================================================
+   SHARED COMPONENT CLASSES
+   ============================================================ */
+
+/* --- Card --- */
+.card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  padding: var(--sp-5);
+  box-shadow: var(--shadow-card);
+}
+
+.card-light {
+  background: var(--bg-card-light);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  padding: var(--sp-5);
+}
+
+/* --- Buttons --- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  padding: 12px var(--sp-6);
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 15px;
+  font-family: var(--font);
+  transition:
+    background var(--transition),
+    opacity var(--transition),
+    transform var(--transition),
+    box-shadow var(--transition);
+  user-select: none;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+
+.btn-gold {
+  background: var(--gold);
+  color: #000;
+  box-shadow: 0 4px 16px rgba(201, 162, 39, 0.3);
+}
+
+.btn-gold:hover:not(:disabled) {
+  background: #d9af35;
+  box-shadow: 0 6px 24px rgba(201, 162, 39, 0.45);
+}
+
+.btn-ghost {
+  background: var(--bg-card-light);
+  color: var(--text);
+  border: 1px solid var(--border-light);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.btn-danger {
+  background: var(--danger-dim);
+  color: var(--danger);
+  border: 1px solid var(--danger-border);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: rgba(217, 48, 37, 0.22);
+}
+
+.btn-teal {
+  background: var(--teal);
+  color: #fff;
+}
+
+.btn-teal:hover:not(:disabled) {
+  background: var(--teal-light);
+}
+
+.btn-full {
+  width: 100%;
+}
+
+.btn-sm {
+  padding: 8px 14px;
+  font-size: 13px;
+}
+
+/* --- Input --- */
+.input {
+  width: 100%;
+  background: var(--bg-card-light);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  color: var(--text);
+  padding: 12px var(--sp-4);
+  font-family: var(--font);
+  font-size: 15px;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  appearance: none;
+  outline: none;
+}
+
+.input::placeholder {
+  color: var(--text-hint);
+}
+
+.input:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px var(--gold-dim);
+}
+
+.input:focus-visible {
+  outline: none;
+}
+
+.input[type="number"]::-webkit-inner-spin-button,
+.input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+}
+
+/* --- Section Title --- */
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 700;
+  margin-block-end: var(--sp-3);
+  margin-block-start: var(--sp-6);
+}
+
+.section-title svg {
+  color: var(--gold);
+  flex-shrink: 0;
+}
+
+/* --- Chip / Badge --- */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--bg-card-light);
+  border: 1px solid var(--border-light);
+  color: var(--text-muted);
+  cursor: default;
+  transition: background var(--transition), border-color var(--transition), color var(--transition);
+  user-select: none;
+}
+
+.chip-gold {
+  background: var(--gold-dim);
+  border-color: var(--gold-border);
+  color: var(--gold);
+}
+
+.chip-danger {
+  background: var(--danger-dim);
+  border-color: var(--danger-border);
+  color: var(--danger);
+}
+
+.chip-success {
+  background: var(--success-dim);
+  border-color: var(--success-border);
+  color: var(--success-bright);
+}
+
+.chip-warning {
+  background: var(--warning-dim);
+  border-color: rgba(245, 166, 35, 0.4);
+  color: var(--warning);
+}
+
+.chip-clickable {
+  cursor: pointer;
+}
+
+.chip-clickable:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+  border-color: var(--border-light);
+}
+
+.chip-clickable:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* --- Divider --- */
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin-block: var(--sp-5);
+}
+
+/* --- Text helpers --- */
+.text-muted   { color: var(--text-muted); }
+.text-hint    { color: var(--text-hint); }
+.text-gold    { color: var(--gold); }
+.text-danger  { color: var(--danger); }
+.text-success { color: var(--success-bright); }
+.text-warning { color: var(--warning); }
+.text-sm      { font-size: 13px; }
+.text-xs      { font-size: 11px; }
+.text-lg      { font-size: 18px; }
+.font-bold    { font-weight: 700; }
+.font-medium  { font-weight: 500; }
+
+/* --- Flex helpers --- */
+.row         { display: flex; align-items: center; }
+.row-between { display: flex; align-items: center; justify-content: space-between; }
+.col         { display: flex; flex-direction: column; }
+.gap-1 { gap: var(--sp-1); }
+.gap-2 { gap: var(--sp-2); }
+.gap-3 { gap: var(--sp-3); }
+.gap-4 { gap: var(--sp-4); }
+
+/* --- Spinner --- */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border-light);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+/* --- Page wrapper helper --- */
+.page-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--sp-5) var(--sp-5) calc(var(--tab-height) + var(--sp-8));
+}
+
+@media (min-width: 900px) {
+  .page-scroll {
+    padding-block-end: var(--sp-10);
+  }
+}
+
+/* --- Page entrance animation --- */
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-enter {
+  animation: page-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* --- Empty state --- */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  padding: var(--sp-10) var(--sp-6);
+  color: var(--text-hint);
+  text-align: center;
+}
+
+.empty-state svg {
+  color: var(--border-light);
+  opacity: 0.6;
+}
+
+.empty-state p,
+.empty-state span {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* --- Focus visible global reset (use :focus-visible everywhere) --- */
+*:focus {
+  outline: none;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ============================================================
+   RTL LOGICAL PROPERTIES — never use left/right directly
+   All margin/padding in components use margin-inline-*, padding-inline-*
+   All absolute positioning uses inset-inline-* not left/right.
+   ============================================================ */

@@ -1,0 +1,332 @@
+/* ============================================================
+   BeneficiariesPage — scoped styles (.ben-*)
+   Logical properties throughout; never left/right
+   ============================================================ */
+
+.ben-page {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--sp-5) var(--sp-5) calc(var(--tab-height) + var(--sp-8));
+  animation: page-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@media (min-width: 900px) {
+  .ben-page {
+    padding-block-end: var(--sp-10);
+  }
+}
+
+/* ── Header ─────────────────────────────────────────────── */
+
+.ben-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-block-end: var(--sp-6);
+}
+
+.ben-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.ben-back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius);
+  background: var(--bg-card-light);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition), color var(--transition);
+  flex-shrink: 0;
+}
+
+.ben-back-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--border-light);
+  color: var(--text);
+}
+
+.ben-back-btn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.ben-h1 {
+  color: var(--text);
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.ben-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  background: var(--gold);
+  color: #000;
+  border: none;
+  border-radius: var(--radius);
+  padding: 9px 13px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: var(--font);
+  cursor: pointer;
+  transition:
+    background var(--transition),
+    box-shadow var(--transition),
+    transform var(--transition);
+  box-shadow: 0 4px 14px rgba(201, 162, 39, 0.28);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.ben-add-btn:hover {
+  background: #d9af35;
+  box-shadow: 0 6px 20px rgba(201, 162, 39, 0.42);
+}
+
+.ben-add-btn:active {
+  transform: scale(0.97);
+}
+
+.ben-add-btn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+
+/* ── Tabs ────────────────────────────────────────────────── */
+
+.ben-tabs {
+  display: flex;
+  gap: var(--sp-1);
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  padding: 4px;
+  border: 1px solid var(--border);
+  margin-block-end: var(--sp-4);
+}
+
+.ben-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px var(--sp-3);
+  border-radius: calc(var(--radius) - 2px);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+  user-select: none;
+}
+
+.ben-tab:hover:not(.ben-tab--active) {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+}
+
+.ben-tab--active {
+  background: var(--bg-card-light);
+  color: var(--text);
+  font-weight: 700;
+}
+
+.ben-tab:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* ── List ────────────────────────────────────────────────── */
+
+.ben-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  margin-block-start: var(--sp-2);
+}
+
+/* ── Empty state ─────────────────────────────────────────── */
+
+.ben-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  padding: var(--sp-16) var(--sp-6);
+  text-align: center;
+  color: var(--text-hint);
+}
+
+.ben-empty svg {
+  opacity: 0.5;
+}
+
+.ben-empty-text {
+  font-size: 14px;
+  color: var(--text-hint);
+  line-height: 1.6;
+}
+
+/* ── Active Card ─────────────────────────────────────────── */
+
+.ben-card-active {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-4);
+  border: 1px solid var(--border);
+  border-inline-start: 3px solid var(--teal);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.ben-card-active:hover {
+  border-color: var(--border-light);
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.4);
+}
+
+/* ── Blocked Card ────────────────────────────────────────── */
+
+.ben-card-blocked {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-4);
+  border: 1px solid var(--border);
+  border-inline-start: 3px solid var(--danger);
+  box-shadow: var(--shadow-card);
+}
+
+.ben-blocked-top {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+}
+
+/* ── Avatar ──────────────────────────────────────────────── */
+
+.ben-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ben-avatar--active {
+  background: rgba(0, 133, 122, 0.12);
+  color: var(--teal);
+  border: 1px solid rgba(0, 133, 122, 0.2);
+}
+
+.ben-avatar--blocked {
+  background: var(--danger-dim);
+  color: var(--danger);
+  border: 1px solid var(--danger-border);
+}
+
+/* ── Card content ────────────────────────────────────────── */
+
+.ben-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.ben-card-name {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: start;
+}
+
+.ben-card-sub {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-block-start: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: start;
+}
+
+.ben-card-bank {
+  display: inline-flex;
+  align-items: center;
+  margin-block-start: var(--sp-1);
+  background: var(--bg-card-light);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 2px 8px;
+  color: var(--text-hint);
+  font-size: 11px;
+}
+
+.ben-blocked-reason {
+  color: var(--danger);
+  font-size: 12px;
+  margin-block-start: 4px;
+  line-height: 1.5;
+  text-align: start;
+}
+
+/* ── Unblock button ──────────────────────────────────────── */
+
+.ben-unblock-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  background: transparent;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  padding: 10px var(--sp-4);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 700;
+  font-family: var(--font);
+  cursor: pointer;
+  margin-block-start: var(--sp-3);
+  width: 100%;
+  transition: background var(--transition), border-color var(--transition), color var(--transition), transform var(--transition);
+}
+
+.ben-unblock-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--border-light);
+  color: var(--text);
+}
+
+.ben-unblock-btn:active {
+  transform: scale(0.98);
+}
+
+.ben-unblock-btn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* ── Initials avatar ─────────────────────────────────────── */
+
+.ben-initials {
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
+}

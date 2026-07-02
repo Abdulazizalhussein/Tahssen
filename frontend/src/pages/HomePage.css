@@ -1,0 +1,400 @@
+/* ============================================================
+   HOME PAGE — scoped to .home-* prefix
+   Deep fintech dark, gold & teal accents, RTL-safe logical props
+   ============================================================ */
+
+/* ── Page root ────────────────────────────────────────────── */
+
+.home-page {
+  animation: page-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* ── Header ───────────────────────────────────────────────── */
+
+.home-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-block-end: var(--sp-4);
+}
+
+.home-header__text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.home-greeting {
+  color: var(--text);
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.3px;
+}
+
+.home-date {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* ── Status banner ────────────────────────────────────────── */
+
+.home-status-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  background: rgba(0, 133, 122, 0.08);
+  border: 1px solid rgba(0, 133, 122, 0.22);
+  border-radius: var(--radius);
+  padding: 12px var(--sp-4);
+  margin-block-end: var(--sp-5);
+}
+
+.home-status-text {
+  color: var(--text);
+  font-size: 13px;
+  flex: 1;
+  line-height: 1.5;
+  text-align: start;
+}
+
+/* ── Balance card wrapper ─────────────────────────────────── */
+
+.home-balance-wrap {
+  margin-block-end: var(--sp-2);
+}
+
+/* ── Balance card component styles ───────────────────────── */
+
+.balance-card {
+  background: linear-gradient(145deg, #002a45 0%, var(--bg-card-light) 100%);
+  border-radius: var(--radius-xl);
+  padding: var(--sp-6);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-gold), var(--shadow-card);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle decorative glow behind amount */
+.balance-card::before {
+  content: '';
+  position: absolute;
+  inset-block-start: -40px;
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(201, 162, 39, 0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.balance-card__label {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  text-align: center;
+  margin-block-end: var(--sp-3);
+}
+
+.balance-card__amount-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: var(--sp-2);
+}
+
+.balance-card__amount {
+  color: var(--text);
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.balance-card__currency {
+  color: var(--gold);
+  font-size: 18px;
+  font-weight: 700;
+  margin-block-end: 5px;
+  opacity: 0.9;
+}
+
+.balance-card__account-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-block-start: var(--sp-3);
+}
+
+.balance-card__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--teal);
+  flex-shrink: 0;
+  animation: dot-pulse 2s ease-in-out infinite;
+}
+
+@keyframes dot-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+.balance-card__account-name {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.balance-card__divider {
+  height: 1px;
+  background: var(--border);
+  margin-block: var(--sp-5);
+}
+
+.balance-card__spent-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-block-end: var(--sp-2);
+}
+
+.balance-card__spent-label {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.balance-card__spent-value {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.balance-card__track {
+  height: 6px;
+  background: var(--border);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.balance-card__fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.balance-card__pct {
+  color: var(--text-hint);
+  font-size: 11px;
+  margin-block-start: var(--sp-2);
+  text-align: start;
+}
+
+/* ── Quick actions grid ───────────────────────────────────── */
+
+.home-actions {
+  display: flex;
+  gap: var(--sp-3);
+}
+
+.home-action {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.home-action:focus-visible .home-action__icon {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+
+.home-action__icon {
+  width: 100%;
+  height: 68px;
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background var(--transition),
+    border-color var(--transition),
+    transform var(--transition),
+    box-shadow var(--transition);
+}
+
+.home-action:hover .home-action__icon {
+  background: var(--bg-card-light);
+  border-color: var(--border-light);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.home-action:active .home-action__icon {
+  transform: scale(0.93);
+}
+
+.home-action__icon--primary {
+  background: var(--teal);
+  border-color: var(--teal);
+  box-shadow: 0 4px 16px rgba(0, 133, 122, 0.3);
+}
+
+.home-action:hover .home-action__icon--primary {
+  background: var(--teal-light);
+  border-color: var(--teal-light);
+  box-shadow: 0 6px 20px rgba(0, 133, 122, 0.4);
+}
+
+.home-action__label {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.3;
+  font-family: var(--font);
+}
+
+/* ── Transaction list card ────────────────────────────────── */
+
+.home-tx-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding-inline: var(--sp-4);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.home-tx-sep {
+  height: 1px;
+  background: var(--border);
+}
+
+/* ── TransactionItem component styles ─────────────────────── */
+
+.tx-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding-block: var(--sp-3);
+  transition: background var(--transition);
+}
+
+.tx-item__icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.tx-item__middle {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.tx-item__name {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: start;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+}
+
+.tx-item__sub {
+  color: var(--text-muted);
+  font-size: 11px;
+  text-align: start;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tx-item__right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+[dir="rtl"] .tx-item__right {
+  align-items: flex-start;
+}
+
+.tx-item__amount {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.tx-item__risk-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+}
+
+.tx-item__risk-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tx-item__risk-score {
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Responsive ───────────────────────────────────────────── */
+
+@media (min-width: 480px) {
+  .home-greeting {
+    font-size: 26px;
+  }
+
+  .balance-card__amount {
+    font-size: 50px;
+  }
+}
+
+@media (max-width: 360px) {
+  .home-action__icon {
+    height: 58px;
+  }
+
+  .home-action__label {
+    font-size: 10px;
+  }
+
+  .balance-card__amount {
+    font-size: 36px;
+  }
+}
