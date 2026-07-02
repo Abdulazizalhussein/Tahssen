@@ -58,6 +58,21 @@ export default function ChatPage() {
     [input, busy, messages, account, t, scrollToBottom]
   )
 
+  const retry = useCallback(async () => {
+    if (busy || messages.length === 0) return
+    setBusy(true)
+    setError(null)
+    try {
+      const reply = await chat(account, messages)
+      setMessages([...messages, { role: 'assistant', content: reply }])
+    } catch (e) {
+      setError(e?.message || t('error'))
+    } finally {
+      setBusy(false)
+      requestAnimationFrame(() => scrollToBottom())
+    }
+  }, [busy, messages, account, t, scrollToBottom])
+
   const handleKeyDown = useCallback(
     (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
@@ -116,7 +131,7 @@ export default function ChatPage() {
 
         {error && (
           <div className="chat-error-wrap">
-            <ErrorBox message={error} onRetry={() => { setError(null); send(messages[messages.length - 1]?.content) }} />
+            <ErrorBox message={error} onRetry={retry} />
           </div>
         )}
       </div>

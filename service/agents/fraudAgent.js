@@ -151,7 +151,7 @@ export async function analyze(params) {
         model: MODEL,
         messages,
         response_format: { type: 'json_object' },
-        max_tokens: 400,
+        max_tokens: 450,
       })
       const raw = safeParse(response.choices[0].message.content)
       return clampResult(raw)

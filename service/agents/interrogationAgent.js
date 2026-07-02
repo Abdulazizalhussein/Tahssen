@@ -65,7 +65,7 @@ function stripFences(str) {
 
 // ── Main export ───────────────────────────────────────────────────
 
-export async function interrogate({ beneficiary, amount, conversationHistory, previousTransfers }) {
+export async function interrogate({ beneficiary, amount, conversationHistory = [], previousTransfers = [] }) {
   const allAnswers = conversationHistory.filter((m) => m.role === 'user').map((m) => m.content).join(' ')
   const qCount     = conversationHistory.filter((m) => m.role === 'assistant').length
   const bType      = classifyBeneficiary(beneficiary || '')
@@ -165,7 +165,7 @@ ${conversationHistory.map((m) => `${m.role === 'assistant' ? '[تحصين]' : '[
           { role: 'user',   content: userMessage },
         ],
         response_format: { type: 'json_object' },
-        max_tokens: 200,
+        max_tokens: 250,
       })
       const result = JSON.parse(stripFences(response.choices[0].message.content))
 

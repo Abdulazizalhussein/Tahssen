@@ -280,7 +280,7 @@ export function AccountProvider({ children }) {
           await blockBeneficiary(
             userId,
             payload.beneficiary,
-            payload.reasoning || payload.reason || 'مؤشرات احتيال مرتفعة'
+            transfer.reasoning || payload.reason || 'مؤشرات احتيال مرتفعة'
           )
         }
         const txs = await getTransactions(userId)

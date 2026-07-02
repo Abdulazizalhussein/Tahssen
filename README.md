@@ -54,7 +54,8 @@ tahseen/
 │       ├── store/        # db.js (localStorage), AccountContext (global state + actions)
 │       └── api/          # client.js — typed fetch wrappers for /api/ai/* endpoints
 ├── backend/              # Express API server — the only layer that touches OpenAI
-│   ├── server.js         # cors, json, /api mount, static frontend dist + SPA fallback
+│   ├── app.js            # cors, json, /api mount, static frontend dist + SPA fallback
+│   ├── server.js         # entry point — app.listen on PORT
 │   ├── routes/ai.js      # POST /api/ai/interrogate, /analyze, /chat; GET /api/health
 │   └── .env.example      # OPENAI_API_KEY, OPENAI_MODEL, PORT
 └── service/              # Pure ESM AI-agent library (no Express); used only by backend

@@ -349,7 +349,7 @@ export default function TransferPage() {
   }, [answer, busy, messages, beneficiary, amount, previousTransfers, handleQuestionResult, t])
 
   // ── Confirm transfer ──────────────────────────────────────
-  const confirm = () => {
+  const confirm = async () => {
     const payload = {
       beneficiary,
       iban,
@@ -358,13 +358,13 @@ export default function TransferPage() {
       riskScore: assessment?.riskScore ?? 0,
       riskLevel: assessment?.riskLevel ?? 'low',
     }
-    executeTransfer(payload)
+    await executeTransfer(payload)
     setResult({ blocked: false })
     setStep(STEP.RESULT)
   }
 
   // ── Block transfer ────────────────────────────────────────
-  const block = () => {
+  const block = async () => {
     const payload = {
       beneficiary,
       iban,
@@ -374,7 +374,7 @@ export default function TransferPage() {
       riskScore: assessment?.riskScore ?? 0,
       riskLevel: assessment?.riskLevel ?? 'low',
     }
-    blockTransfer(payload)
+    await blockTransfer(payload)
     setResult({ blocked: true })
     setStep(STEP.RESULT)
   }

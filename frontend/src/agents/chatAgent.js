@@ -57,6 +57,9 @@ export async function chat(account, messages) {
     monthlyBudget: account.monthlyBudget,
     monthlyIncome: account.monthlyIncome,
     fixedExpenses: account.fixedExpenses,
+    totalFixedExpenses: account.totalFixedExpenses,
+    transactions: account.transactions,
+    lang: account.lang,
   }
   const withSystem = [
     { role: 'system', content: systemPrompt(account) },

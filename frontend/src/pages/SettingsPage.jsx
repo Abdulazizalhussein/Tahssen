@@ -133,7 +133,7 @@ export default function SettingsPage() {
 
   /* ── Delete expense ── */
   const handleDelete = useCallback(async (id) => {
-    if (!window.confirm(t('resetAccount') + '?')) return
+    if (!window.confirm(t('remove') + '?')) return
     await removeExpense(id)
   }, [removeExpense, t])
 
@@ -254,7 +254,7 @@ export default function SettingsPage() {
                   <button
                     className="settings-icon-btn settings-icon-btn--danger"
                     onClick={() => handleDelete(exp.id)}
-                    aria-label={t('resetAccount')}
+                    aria-label={t('remove')}
                   >
                     <Trash2 size={14} color="var(--danger)" />
                   </button>

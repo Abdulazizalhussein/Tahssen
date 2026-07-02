@@ -5,7 +5,7 @@ import { useAccount } from '../store/AccountContext'
 import './SplashPage.css'
 
 export default function SplashPage() {
-  const { isLoading, isAuthed } = useAccount()
+  const { isLoading, isAuthed, t } = useAccount()
   const navigate = useNavigate()
   const timerRef = useRef(null)
 
@@ -23,8 +23,8 @@ export default function SplashPage() {
         <div className="splash-logo">
           <ShieldCheck size={72} color="var(--gold)" />
         </div>
-        <h1 className="splash-title">تحصين</h1>
-        <p className="splash-tagline">جهاز المناعة المالي</p>
+        <h1 className="splash-title">{t('appName')}</h1>
+        <p className="splash-tagline">{t('tagline')}</p>
       </div>
     </div>
   )

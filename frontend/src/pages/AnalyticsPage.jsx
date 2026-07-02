@@ -245,10 +245,17 @@ function ExpenseRow({ e, catLabel, formatMoney, onRemove, t, isRTL }) {
 }
 
 /* ── Add Expense Modal ────────────────────────────────────────── */
-function ExpenseModal({ visible, onClose, onSave, t, isRTL }) {
+function ExpenseModal({ visible, preset, onClose, onSave, t, isRTL }) {
   const [expName, setExpName]       = useState('')
   const [expAmount, setExpAmount]   = useState('')
   const [expCategory, setExpCategory] = useState('other')
+
+  useEffect(() => {
+    if (visible && preset) {
+      setExpName(isRTL ? preset.name : preset.nameEn)
+      setExpCategory(preset.category || 'other')
+    }
+  }, [visible, preset, isRTL])
 
   const reset = () => {
     setExpName('')
@@ -482,7 +489,7 @@ export default function AnalyticsPage() {
   }
 
   const openExpense = (preset) => {
-    setExpenseModal(true)
+    setExpenseModal(preset && preset.category ? preset : true)
   }
 
   const handleSaveExpense = async ({ name, amount, category }) => {
@@ -704,7 +711,8 @@ export default function AnalyticsPage() {
 
       {/* ── Add Expense bottom sheet ── */}
       <ExpenseModal
-        visible={expenseModal}
+        visible={Boolean(expenseModal)}
+        preset={typeof expenseModal === 'object' ? expenseModal : null}
         onClose={() => setExpenseModal(false)}
         onSave={handleSaveExpense}
         t={t}

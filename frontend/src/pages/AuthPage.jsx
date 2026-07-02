@@ -67,8 +67,8 @@ export default function AuthPage() {
           <div className="auth-logo">
             <ShieldCheck size={40} color="var(--gold)" />
           </div>
-          <h1 className="auth-app-name">تحصين</h1>
-          <p className="auth-tagline">جهاز المناعة المالي</p>
+          <h1 className="auth-app-name">{t('appName')}</h1>
+          <p className="auth-tagline">{t('tagline')}</p>
         </div>
 
         {/* Tab switcher */}

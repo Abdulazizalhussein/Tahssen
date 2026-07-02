@@ -20,6 +20,14 @@ router.get('/health', (_req, res) => {
   res.json({ ok: true, aiConfigured: Boolean(process.env.OPENAI_API_KEY) })
 })
 
+// express.json() leaves req.body undefined when Content-Type isn't JSON —
+// guard so POST handlers can destructure safely.
+router.use((req, res, next) => {
+  if (req.method === 'POST' && (!req.body || typeof req.body !== 'object'))
+    return res.status(400).json({ error: 'INVALID_BODY', detail: 'JSON body required' })
+  next()
+})
+
 // ── POST /api/ai/interrogate ───────────────────────────────────────
 
 router.post('/ai/interrogate', async (req, res) => {
