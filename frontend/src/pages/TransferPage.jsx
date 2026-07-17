@@ -81,13 +81,17 @@ function humanError(e, t) {
 //  matches AddBeneficiaryModal contract: visible + onClose)
 // ─────────────────────────────────────────────────────────────
 function AddBeneficiaryModal({ visible, onClose }) {
-  const { t, isRTL, addBeneficiary } = useAccount()
+  const { t, isRTL, lang, addBeneficiary } = useAccount()
+  const navigate = useNavigate()
   const [name, setName] = useState('')
   const [iban, setIban] = useState('')
   const [bank, setBank] = useState('')
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
   const nameRef = useRef(null)
+
+  // Warn at add-time if this payee has been reported by the community.
+  const community = (name.trim() || iban.trim()) ? lookupPayee(name, iban) : { found: false }
 
   useEffect(() => {
     if (visible) {
@@ -139,15 +143,25 @@ function AddBeneficiaryModal({ visible, onClose }) {
         <ModalField label={t('benIban')} value={iban} onChange={setIban} placeholder={t('benIban')} />
         <ModalField label={t('benBank')} value={bank} onChange={setBank} placeholder={t('benBank')} />
 
+        {community.found && (
+          <CommunityAlert
+            community={community}
+            t={t}
+            lang={lang}
+            onSeeNetwork={() => { onClose(); navigate('/app/community') }}
+          />
+        )}
+
         {err && <p style={{ color: 'var(--danger)', fontSize: 13, marginBlockEnd: 12 }}>{err}</p>}
 
         <button
           className="transfer-primary-btn"
           onClick={handleSave}
           disabled={saving || !name.trim()}
+          style={community.found ? { background: 'var(--danger)', color: '#fff' } : undefined}
         >
           {saving ? <span className="spinner" /> : null}
-          {t('save')}
+          {community.found ? t('addAnyway') : t('save')}
         </button>
       </div>
     </div>

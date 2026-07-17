@@ -1,0 +1,143 @@
+#!/usr/bin/env node
+// ─────────────────────────────────────────────────────────────────
+//  Tahseen service reviewer.
+//
+//  Exercises every service (finance model, community registry, and the
+//  AI agents) with normal AND edge-case inputs, then reports which ones
+//  work and which behave unexpectedly. Run:  npm run review
+//
+//  Without OPENAI_API_KEY the AI agents are checked on their
+//  deterministic short-circuits and graceful fallbacks; set the key to
+//  also exercise the live model paths.
+// ─────────────────────────────────────────────────────────────────
+
+// localStorage shim so the community store (browser module) runs in Node.
+globalThis.localStorage = {
+  _d: {},
+  getItem(k) { return k in this._d ? this._d[k] : null },
+  setItem(k, v) { this._d[k] = String(v) },
+  removeItem(k) { delete this._d[k] },
+}
+
+const R = { pass: 0, fail: 0, services: {} }
+function service(name) {
+  if (!R.services[name]) R.services[name] = { pass: 0, fail: 0, notes: [] }
+  return R.services[name]
+}
+function check(svc, label, cond, note) {
+  const s = service(svc)
+  if (cond) { s.pass++; R.pass++ }
+  else { s.fail++; R.fail++; s.notes.push(`✗ ${label}${note ? ' — ' + note : ''}`) }
+}
+
+const base = new URL('../frontend/src/', import.meta.url)
+const svcBase = new URL('../service/agents/', import.meta.url)
+
+// ── 1. Finance model ────────────────────────────────────────────────
+{
+  const { computeForecast, computeHealth, computeStats } = await import(new URL('lib/finance.js', base))
+
+  // Forecast must project a change, not copy the balance.
+  const fFresh = computeForecast({ balance: 45230, monthlyIncome: 18000, totalFixedExpenses: 0, monthlySpent: 0, monthlyBudget: 8500 })
+  check('forecast', 'projects a change on a fresh account', fFresh.predictedMonthEndBalance < 45230)
+  check('forecast', 'projected spend > 0', fFresh.projectedRemainingSpend > 0)
+  check('forecast', 'savings derived', fFresh.potentialSavings > 0)
+  const fEmpty = computeForecast({ balance: 1000 })
+  check('forecast', 'no NaN on empty account', Number.isFinite(fEmpty.predictedMonthEndBalance))
+
+  // Health must collapse to red on a deficit.
+  const hDef = computeHealth({ balance: 20000, monthlyIncome: 20000, totalFixedExpenses: 38500, monthlySpent: 0, transactions: [] })
+  check('health', 'deficit → low score', hDef.score < 40, `got ${hDef.score}`)
+  check('health', 'deficit → stage critical', hDef.stage === 'critical')
+  check('health', 'deficit flag set', hDef.deficit === true && hDef.surplus < 0)
+  const hGood = computeHealth({ balance: 60000, monthlyIncome: 20000, totalFixedExpenses: 4000, monthlySpent: 2000, transactions: [] })
+  check('health', 'healthy → high score', hGood.score >= 70, `got ${hGood.score}`)
+  const hNoInc = computeHealth({ balance: 5000, monthlyIncome: 0, transactions: [] })
+  check('health', 'no income handled', Number.isFinite(hNoInc.score) && hNoInc.flags.includes('no_income'))
+  const hFraud = computeHealth({ balance: 20000, monthlyIncome: 20000, totalFixedExpenses: 3000, monthlySpent: 1000, transactions: [{ blocked: true, amount: 5000 }, { blocked: false, amount: 100 }] })
+  check('health', 'blocked fraud lowers score', hFraud.score < hGood.score)
+
+  const stats = computeStats([{ amount: 100, blocked: false, beneficiary: 'A', timestamp: 1 }, { amount: 200, blocked: true, beneficiary: 'B', timestamp: 2 }])
+  check('stats', 'counts sent/blocked', stats.sentCount === 1 && stats.blockedCount === 1 && stats.totalBlocked === 200)
+}
+
+// ── 2. Community registry ───────────────────────────────────────────
+{
+  const c = await import(new URL('store/community.js', base))
+  const st = c.communityStats()
+  check('community', 'seed networks present', st.networks >= 3 && st.reports > 0)
+  check('community', 'ring (shared mule) detected', c.sharedMules().size >= 1)
+  check('community', 'direct lookup works', c.lookupPayee('خالد العتيبي').kind === 'direct')
+  check('community', 'linked (mule) lookup works', c.lookupPayee('حساب وسيط ٧٤').kind === 'linked')
+  check('community', 'unknown payee not flagged', c.lookupPayee('شخص عادي جدا').found === false)
+  c.reportFraud({ payee: 'محل الاختبار', category: 'marketplace', reason: 'اختبار', amount: 1000 })
+  const r = c.lookupPayee('محل الاختبار')
+  check('community', 'report → lookup finds it', r.found && r.network.reportCount === 1)
+  c.reportFraud({ payee: 'محل الاختبار', reason: 'اختبار 2', amount: 500 })
+  check('community', 'repeat report increments count', c.lookupPayee('محل الاختبار').network.reportCount === 2)
+  const g = c.buildGraph(c.lookupPayee('خالد العتيبي').network)
+  check('community', 'graph has center + victims + mules', g.nodes[0].role === 'scammer' && g.nodes.length > 3 && g.hasRing)
+}
+
+// ── 3. AI agents (short-circuits + graceful fallback) ───────────────
+{
+  const hasKey = !!process.env.OPENAI_API_KEY
+  const { analyze } = await import(new URL('fraudAgent.js', svcBase))
+  const { interrogate } = await import(new URL('interrogationAgent.js', svcBase))
+  const { recommend } = await import(new URL('recommendAgent.js', svcBase))
+  const { chat } = await import(new URL('chatAgent.js', svcBase))
+
+  // fraudAgent deterministic short-circuits (no network)
+  const known = await analyze({ isPersonallyKnown: true, amount: 1000 })
+  check('fraudAgent', 'known person → allow/low', known.recommendation === 'allow' && known.riskScore <= 10)
+  const forced = await analyze({ forceHighRisk: true, amount: 5000, reason: 'crypto' })
+  check('fraudAgent', 'forceHighRisk → block', forced.recommendation === 'block' && forced.riskScore >= 80)
+
+  // interrogation deterministic short-circuits
+  const prev = await interrogate({ beneficiary: 'متجر', amount: 4000, conversationHistory: [], previousTransfers: [{ amount: 1 }] })
+  check('interrogation', 'prior transfer → skipRisk', prev.skipRisk === true)
+  const crypto = await interrogate({ beneficiary: 'x', amount: 5000, conversationHistory: [{ role: 'assistant', content: 'ما سبب هذه الحوالة؟' }, { role: 'user', content: 'استثمار بيتكوين مضمون' }], previousTransfers: [] })
+  check('interrogation', 'crypto answer → forceHighRisk', crypto.forceHighRisk === true)
+  const gift = await interrogate({ beneficiary: 'x', amount: 100, conversationHistory: [{ role: 'assistant', content: 'q' }, { role: 'user', content: 'اشتري بطاقة ايتونز وارسل الارقام' }], previousTransfers: [] })
+  check('interrogation', 'gift-card under 300 → block (not tiny-amount pass)', gift.forceHighRisk === true)
+  const fam = await interrogate({ beneficiary: 'أخي', amount: 1000, conversationHistory: [{ role: 'assistant', content: 'q' }, { role: 'user', content: 'مصروف لأخوي' }], previousTransfers: [] })
+  check('interrogation', 'family → known person', fam.isPersonallyKnown === true)
+
+  if (!hasKey) {
+    // Without a key: recommend degrades to an empty list (client then uses its
+    // local heuristic); chat throws AiNotConfiguredError so the route returns
+    // 503 and the UI shows a specific "add your key" CTA. Both are correct.
+    const rec = await recommend({ accountData: { balance: 1000, monthlyIncome: 5000, lang: 'ar' } })
+    check('recommend', 'no key → empty list (client falls back)', Array.isArray(rec.recommendations) && rec.recommendations.length === 0)
+    let chatSignalledKey = false
+    try {
+      await chat({ messages: [{ role: 'user', content: 'مرحبا' }], accountData: { balance: 1000, lang: 'ar' } })
+    } catch (e) {
+      chatSignalledKey = e?.name === 'AiNotConfiguredError'
+    }
+    check('chat', 'no key → AiNotConfiguredError (→ 503 → UI "add key")', chatSignalledKey)
+    service('recommend').notes.push('ℹ set OPENAI_API_KEY to exercise the live model')
+  } else {
+    try {
+      const rec = await recommend({ accountData: { balance: 45230, monthlyIncome: 18000, totalFixedExpenses: 6000, monthlySpent: 5000, monthlyBudget: 8500, lang: 'ar', forecast: { projectedMonthlySpend: 9116, overspending: true, dailyBurn: 294 } } })
+      check('recommend', 'live model returns recommendations', Array.isArray(rec.recommendations) && rec.recommendations.length > 0)
+      check('recommend', 'recs have quantified fields', rec.recommendations.every((r) => 'impact' in r && r.category && r.title))
+    } catch (e) { check('recommend', 'live model call', false, e.message) }
+    try {
+      const rep = await chat({ messages: [{ role: 'user', content: 'كيف سينتهي شهري مالياً؟' }], accountData: { balance: 45230, monthlyIncome: 18000, lang: 'ar', forecast: { predictedMonthEndBalance: 41000 } } })
+      check('chat', 'live model replies', typeof rep === 'string' && rep.length > 0)
+    } catch (e) { check('chat', 'live model call', false, e.message) }
+  }
+}
+
+// ── Report ──────────────────────────────────────────────────────────
+console.log('\n══════════ Tahseen service review ══════════')
+for (const [name, s] of Object.entries(R.services)) {
+  const status = s.fail === 0 ? '✅ OK  ' : '❌ FAIL'
+  console.log(`${status}  ${name.padEnd(16)} ${s.pass}/${s.pass + s.fail} checks`)
+  for (const n of s.notes) console.log(`        ${n}`)
+}
+console.log('────────────────────────────────────────────')
+console.log(`TOTAL: ${R.pass} passed, ${R.fail} failed`)
+console.log('════════════════════════════════════════════\n')
+process.exit(R.fail === 0 ? 0 : 1)

@@ -12,7 +12,8 @@
   "scripts": {
     "dev": "concurrently -n backend,frontend -c blue,green \"npm run dev -w backend\" \"npm run dev -w frontend\"",
     "build": "npm run build -w frontend",
-    "start": "npm run start -w backend"
+    "start": "npm run start -w backend",
+    "review": "node scripts/review-services.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.0.0"

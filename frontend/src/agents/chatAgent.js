@@ -5,7 +5,10 @@
 // ─────────────────────────────────────────────────────────────────
 
 import { apiChat } from '../api/client'
-import { computeForecast } from './recommendAgent'
+import { computeForecast, computeHealth, computeStats } from '../lib/finance'
+
+// Re-export so AnalyticsPage's `import { computeStats } from '../agents/chatAgent'` keeps working.
+export { computeStats }
 
 export async function chat(account, messages) {
   const accountData = {
@@ -44,22 +47,21 @@ export async function generateInsights(account) {
   const en = lang === 'en'
   const stats = computeStats(transactions)
 
-  // Local health score: penalise blocked txs and overspend
-  const blockedRatio = stats.sentCount + stats.blockedCount > 0
-    ? stats.blockedCount / (stats.sentCount + stats.blockedCount) : 0
-  const spendRatio = monthlyBudget > 0 ? monthlySpent / monthlyBudget : 0
-  const healthScore = Math.max(0, Math.min(100, Math.round(
-    100 - blockedRatio * 40 - Math.max(0, spendRatio - 0.8) * 100
-  )))
+  // Deficit-aware health score + the shared month-end projection (both from
+  // the pure finance model, so the analytics agree with the rest of the app).
+  const health = computeHealth(account)
+  const healthScore = health.score
+  const forecast = computeForecast(account)
+  const predictedMonthEndBalance = forecast.predictedMonthEndBalance
 
-  const discretionary = monthlyIncome - totalFixedExpenses
-  const remaining = discretionary - monthlySpent
-  const dayOfMonth = new Date().getDate()
-  const daysLeft = 30 - dayOfMonth
-  const dailyRate = dayOfMonth > 0 ? monthlySpent / dayOfMonth : 0
-  const predictedMonthEndBalance = balance - dailyRate * daysLeft
+  const spendRatio = monthlyBudget > 0 ? monthlySpent / monthlyBudget : 0
+  const remaining = health.surplus // income − fixed − spent (may be negative = deficit)
 
   const insights = []
+  if (health.deficit)
+    insights.push(en
+      ? `Your commitments exceed your income by ${fmt(Math.abs(remaining), lang)} ${CUR(lang)}/month`
+      : `التزاماتك تتجاوز دخلك بمقدار ${fmt(Math.abs(remaining), lang)} ${CUR(lang)} شهرياً`)
   if (spendRatio > 0.8)
     insights.push(en ? `You've spent ${Math.round(spendRatio * 100)}% of your monthly budget` : `أنفقت ${Math.round(spendRatio * 100)}% من ميزانيتك الشهرية`)
   if (stats.blockedCount > 0)
@@ -83,7 +85,13 @@ export async function accountStatusLine(account) {
   const en = lang === 'en'
   const blockedCount = transactions.filter((t) => t.blocked).length
   const spendRatio = monthlyBudget > 0 ? monthlySpent / monthlyBudget : 0
+  const health = computeHealth(account)
 
+  // A monthly deficit is the most important thing to surface.
+  if (health.deficit)
+    return en
+      ? `Your commitments exceed your income by ${fmt(Math.abs(health.surplus), lang)} ${CUR(lang)}/month`
+      : `التزاماتك تتجاوز دخلك بمقدار ${fmt(Math.abs(health.surplus), lang)} ${CUR(lang)} شهرياً`
   if (blockedCount > 0)
     return en ? `${blockedCount} suspicious transaction(s) blocked this month` : `تم إيقاف ${blockedCount} معاملة مشبوهة هذا الشهر`
   if (spendRatio > 0.9)
@@ -91,36 +99,4 @@ export async function accountStatusLine(account) {
   if (spendRatio > 0.7)
     return en ? `You've spent ${Math.round(spendRatio * 100)}% of your monthly budget` : `أنفقت ${Math.round(spendRatio * 100)}% من ميزانيتك الشهرية`
   return en ? `Balance ${fmt(balance, lang)} ${CUR(lang)} — your finances are stable` : `رصيدك ${fmt(balance, lang)} ${CUR(lang)} — وضعك المالي مستقر`
-}
-
-export function computeStats(transactions) {
-  const sent = transactions.filter((t) => !t.blocked)
-  const blocked = transactions.filter((t) => t.blocked)
-  const totalSent = sent.reduce((s, t) => s + t.amount, 0)
-  const totalBlocked = blocked.reduce((s, t) => s + t.amount, 0)
-  const avgTransfer = sent.length ? totalSent / sent.length : 0
-  const newBeneficiaries = countNewBeneficiaries(transactions)
-  return {
-    totalSent,
-    totalBlocked,
-    avgTransfer,
-    sentCount: sent.length,
-    blockedCount: blocked.length,
-    newBeneficiaries,
-  }
-}
-
-function countNewBeneficiaries(transactions) {
-  const seen = new Set()
-  let count = 0
-  const chronological = [...transactions].sort((a, b) => a.timestamp - b.timestamp)
-  for (const t of chronological) {
-    const key = (t.beneficiary || '').trim().toLowerCase()
-    if (!key) continue
-    if (!seen.has(key)) {
-      count += 1
-      seen.add(key)
-    }
-  }
-  return count
 }

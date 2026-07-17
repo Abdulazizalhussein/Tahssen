@@ -4,9 +4,12 @@
 //  bank chip selector (optional), busy guard, calls addBeneficiary
 // ─────────────────────────────────────────────────────────────────
 
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { X, User, CreditCard } from 'lucide-react'
 import { useAccount } from '../store/AccountContext'
+import { lookupPayee } from '../store/community'
+import CommunityAlert from './CommunityAlert'
 
 const BANKS = [
   'الإنماء',
@@ -268,13 +271,21 @@ function injectStyles() {
 export default function AddBeneficiaryModal({ visible, onClose, onSaved }) {
   injectStyles()
 
-  const { t, isRTL, addBeneficiary } = useAccount()
+  const { t, isRTL, lang, addBeneficiary } = useAccount()
+  const navigate = useNavigate()
   const [name, setName] = useState('')
   const [iban, setIban] = useState('')
   const [bank, setBank] = useState('')
   const [busy, setBusy] = useState(false)
   const overlayRef = useRef(null)
   const nameInputRef = useRef(null)
+
+  // Check the community registry as the user types — warn at ADD time, not
+  // only when a transfer is attempted.
+  const community = useMemo(
+    () => (name.trim() || iban.trim() ? lookupPayee(name, iban) : { found: false }),
+    [name, iban]
+  )
 
   // Auto-focus name field when opened
   useEffect(() => {
@@ -401,6 +412,18 @@ export default function AddBeneficiaryModal({ visible, onClose, onSaved }) {
           </div>
         </div>
 
+        {/* Community warning — the payee has been reported by other users */}
+        {community.found && (
+          <div className="abn-field-gap">
+            <CommunityAlert
+              community={community}
+              t={t}
+              lang={lang}
+              onSeeNetwork={() => { close(); navigate('/app/community') }}
+            />
+          </div>
+        )}
+
         {/* Bank chip selector (optional) */}
         <div className="abn-field-gap">
           <span className="abn-field-label">{t('benBank')}</span>
@@ -422,16 +445,17 @@ export default function AddBeneficiaryModal({ visible, onClose, onSaved }) {
           </div>
         </div>
 
-        {/* Save button */}
+        {/* Save button — turns cautionary when the payee is community-reported */}
         <button
           className="abn-save-btn"
           type="button"
           onClick={save}
           disabled={!name.trim() || busy}
           aria-busy={busy}
+          style={community.found ? { background: 'var(--danger)' } : undefined}
         >
           {busy ? <span className="abn-spinner" aria-hidden="true" /> : null}
-          {t('save')}
+          {community.found ? t('addAnyway') : t('save')}
         </button>
       </div>
     </div>

@@ -9,6 +9,10 @@
 // ─────────────────────────────────────────────────────────────────
 
 import { apiRecommend } from '../api/client'
+import { computeForecast } from '../lib/finance'
+
+// Re-export so existing importers (chatAgent, pages) keep working.
+export { computeForecast }
 
 const CATEGORIES = new Set(['save', 'protect', 'plan', 'spend', 'grow'])
 const PRIORITIES = new Set(['high', 'medium', 'low'])
@@ -17,75 +21,6 @@ const num = (v) => {
   return Number.isFinite(n) ? n : 0
 }
 const round = (n) => Math.round(num(n))
-
-/**
- * The financial projection model. Every figure below is derived, and they
- * depend on each other:
- *
- *   dailyBurn              = observed spend/day  (or the budgeted pace if no
- *                            spend yet this month)
- *   projectedRemainingSpend= dailyBurn × days left in the month
- *   projectedMonthlySpend  = spent so far + projected remaining
- *   fixedDueRemaining      = fixed commitments still expected before month-end
- *   predictedMonthEnd      = balance − projectedRemainingSpend − fixedDueRemaining
- *   potentialSavings       = budget (or discretionary) − projectedMonthlySpend
- *   savingsRate            = (income − fixed − projectedMonthlySpend) / income
- */
-export function computeForecast(account) {
-  const balance = num(account.balance)
-  const income = num(account.monthlyIncome)
-  const fixed = num(account.totalFixedExpenses)
-  const spent = num(account.monthlySpent)
-  const budget = num(account.monthlyBudget)
-
-  const now = new Date()
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
-  const dayOfMonth = now.getDate()
-  const daysElapsed = Math.max(1, dayOfMonth)
-  const daysLeft = Math.max(0, daysInMonth - dayOfMonth)
-
-  // Room to spend after fixed commitments (fall back to the stated budget).
-  const discretionary = income > 0 ? Math.max(0, income - fixed) : budget
-
-  // Expected variable spending per day: extrapolate real spend when we have
-  // it, otherwise assume the customer spends at their planned budget pace, so
-  // the forecast is never a flat copy of today's balance.
-  const budgetedPace = (budget > 0 ? budget : discretionary * 0.6) / daysInMonth
-  const dailyBurn = spent > 0 ? spent / daysElapsed : budgetedPace
-
-  const projectedRemainingSpend = round(dailyBurn * daysLeft)
-  const projectedMonthlySpend = round(spent + projectedRemainingSpend)
-
-  // Fixed bills still expected before month-end (spread evenly across the month).
-  const fixedDueRemaining = round(fixed * (daysLeft / daysInMonth))
-
-  // Month-end balance = what's left after the spending we still expect.
-  const predictedMonthEndBalance = Math.max(0, round(balance - projectedRemainingSpend - fixedDueRemaining))
-
-  // What could still be saved = the unspent part of the month's budget.
-  const savableBase = budget > 0 ? budget : discretionary
-  const potentialSavings = round(Math.max(0, savableBase - projectedMonthlySpend))
-
-  const savingsRate = income > 0 ? Math.max(0, (income - fixed - projectedMonthlySpend) / income) : 0
-  const overspending = projectedMonthlySpend > savableBase && savableBase > 0
-
-  return {
-    balance,
-    income,
-    fixed,
-    daysLeft,
-    daysInMonth,
-    discretionary,
-    dailyBurn: round(dailyBurn),
-    projectedRemainingSpend,
-    projectedMonthlySpend,
-    fixedDueRemaining,
-    predictedMonthEndBalance,
-    potentialSavings,
-    savingsRate: Math.round(savingsRate * 100) / 100,
-    overspending,
-  }
-}
 
 /** Deterministic, bilingual recommendations — all impacts come from `f`. */
 export function localRecommendations(account, f) {

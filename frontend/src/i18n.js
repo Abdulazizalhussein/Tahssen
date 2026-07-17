@@ -118,6 +118,7 @@ export const STRINGS = {
     fixed: 'الثابتة',
     variableSpending: 'المتغيرة',
     remaining: 'المتبقي',
+    deficit: 'العجز',
     // errors
     noApiKeyTitle: 'مفتاح API غير موجود',
     noApiKeyMsg: 'يرجى إضافة مفتاح OpenAI من الإعدادات لتفعيل الذكاء الاصطناعي.',
@@ -250,6 +251,7 @@ export const STRINGS = {
     communityEmpty: 'لا توجد بلاغات بعد — كن أول من يحمي المجتمع.',
     communityDemoNote: 'بيانات توضيحية تمثّل بلاغات مجتمع تحصين. في الإنتاج تُدار عبر سجل مشترك آمن.',
     reporterYou: 'أنت',
+    addAnyway: 'إضافة رغم التحذير',
     // interrogation + instant-signal reasons (localized so the AI flow matches UI language)
     qWhyTransfer: 'ما سبب هذه الحوالة؟',
     reasonKnownBeneficiary: 'مستفيد سبق التحويل إليه',
@@ -379,6 +381,7 @@ export const STRINGS = {
     fixed: 'Fixed',
     variableSpending: 'Variable',
     remaining: 'Remaining',
+    deficit: 'Deficit',
     noApiKeyTitle: 'API Key Missing',
     noApiKeyMsg: 'Please add your OpenAI API key in Settings to enable AI features.',
     goToSettings: 'Go to Settings',
@@ -508,6 +511,7 @@ export const STRINGS = {
     communityEmpty: 'No reports yet — be the first to protect the community.',
     communityDemoNote: 'Demo data representing Tahseen community reports. In production this runs on a secure shared registry.',
     reporterYou: 'You',
+    addAnyway: 'Add anyway',
     // interrogation + instant-signal reasons (localized so the AI flow matches UI language)
     qWhyTransfer: 'What is the purpose of this transfer?',
     reasonKnownBeneficiary: 'You have transferred to this beneficiary before',

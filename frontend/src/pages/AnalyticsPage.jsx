@@ -92,15 +92,17 @@ function HealthRing({ score }) {
 /* ── Budget Breakdown ─────────────────────────────────────────── */
 function BudgetBreakdown({ income, fixed, variable, formatMoney, t }) {
   const remaining = income - fixed - variable
+  const inDeficit = remaining < 0
   const max = Math.max(income, fixed + variable, 1)
   const rows = [
     { label: t('income'),           value: income,    color: 'var(--teal)' },
     { label: t('fixed'),            value: fixed,     color: 'var(--danger)' },
     { label: t('variableSpending'), value: variable,  color: 'var(--warning)' },
     {
-      label: t('remaining'),
+      // A negative remainder is a DEFICIT, not "remaining" — say so.
+      label: inDeficit ? t('deficit') : t('remaining'),
       value: remaining,
-      color: remaining >= 0 ? 'var(--success)' : 'var(--danger)',
+      color: inDeficit ? 'var(--danger)' : 'var(--success)',
     },
   ]
   return (
