@@ -35,7 +35,7 @@ const svcBase = new URL('../service/agents/', import.meta.url)
 
 // ── 1. Finance model ────────────────────────────────────────────────
 {
-  const { computeForecast, computeHealth, computeStats, dailySpendSeries, monthlySpendSeries, categorySpendSeries } = await import(new URL('lib/finance.js', base))
+  const { computeForecast, computeHealth, computeStats, dailySpendSeries, spendTimelineSeries, categorySpendSeries } = await import(new URL('lib/finance.js', base))
 
   // Forecast must project a change, not copy the balance.
   const fFresh = computeForecast({ balance: 45230, monthlyIncome: 18000, totalFixedExpenses: 0, monthlySpent: 0, monthlyBudget: 8500 })
@@ -66,8 +66,20 @@ const svcBase = new URL('../service/agents/', import.meta.url)
   const daily = dailySpendSeries(acc, fc)
   check('charts', 'daily series has actual + projected + budget', daily.actual.length >= 1 && daily.projected.length >= 1 && daily.budget > 0 && daily.maxY > 0)
   check('charts', 'projection ends ≥ actual (spend accrues)', daily.projectedTotal >= (daily.actual.at(-1)?.value ?? 0))
-  const monthly = monthlySpendSeries(acc, fc)
-  check('charts', 'monthly series has months + a peak', monthly.months.length === 6 && monthly.months.some((m) => m.isPeak) && monthly.avg >= 0)
+  const monthly = spendTimelineSeries(acc, fc)
+  check('charts', 'timeline has past+current+future, a peak, finite avg',
+    monthly.months.length === 6 &&
+    monthly.months.some((m) => m.isCurrent) &&
+    monthly.months.some((m) => m.kind === 'future') &&
+    monthly.months.some((m) => m.kind === 'past') &&
+    monthly.months.some((m) => m.isPeak) &&
+    Number.isFinite(monthly.avg) && monthly.avg >= 0)
+  check('charts', 'current bar pinned to forecast (fixed + projectedMonthlySpend)',
+    monthly.months.find((m) => m.isCurrent)?.total === Math.round(acc.totalFixedExpenses + fc.projectedMonthlySpend))
+  check('charts', 'actual+predicted === total for every month',
+    monthly.months.every((m) => Math.abs((m.actual + m.predicted) - m.total) <= 1))
+  check('charts', 'future months are pure forecast (actual 0)',
+    monthly.months.filter((m) => m.kind === 'future').every((m) => m.actual === 0 && m.predicted === m.total))
   const cat = categorySpendSeries(acc.fixedExpenses)
   check('charts', 'category donut totals match', cat.total === 6000 && cat.entries.length === 2)
 }

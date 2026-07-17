@@ -67,21 +67,47 @@
 
 .chart-today-dot { fill: var(--gold); stroke: var(--bg-card); stroke-width: 2; }
 
-/* ── Bars (stacked: fixed base + variable top) ── */
-.chart-avg-line { stroke: var(--text-hint); stroke-width: 1; stroke-dasharray: 3 4; opacity: 0.6; }
-.chart-bar-group { animation: chart-grow 520ms cubic-bezier(0.2, 0.9, 0.3, 1.1) both; }
-@keyframes chart-grow { from { transform: scaleY(0); opacity: 0.4; } }
-.chart-bar.fixed { fill: var(--teal); }
-.chart-bar.fixed.current { fill: var(--teal-light); }
-.chart-bar.variable { fill: var(--gold); opacity: 0.9; }
-.chart-bar.variable.peak { fill: var(--gold); }
-.chart-bar.variable.projected { fill: var(--gold); opacity: 0.55; }
+/* ── Spending timeline (past actual → now → future forecast) ── */
+.chart-avg-line { stroke: var(--text-hint); stroke-width: 1; stroke-dasharray: 3 4; opacity: 0.55; }
 .chart-bar-value { fill: var(--text-muted); font-size: 9.5px; font-weight: 700; font-family: var(--font); font-variant-numeric: tabular-nums; }
 
+.tl-forecast-zone { fill: var(--gold); opacity: 0.05; }
+.tl-now-line { stroke: var(--gold); stroke-width: 1.2; stroke-dasharray: 3 3; opacity: 0.65; }
+.tl-now-label { fill: var(--gold); font-size: 8.5px; font-weight: 700; font-family: var(--font); opacity: 0.85; }
+
+.tl-bar-g { animation: chart-grow 520ms cubic-bezier(0.2, 0.9, 0.3, 1.1) both; cursor: pointer; transition: opacity 160ms ease; outline: none; }
+@keyframes chart-grow { from { transform: scaleY(0); opacity: 0.4; } }
+.tl-bar-g.dim { opacity: 0.32; }
+.tl-bar-g:focus-visible .tl-actual, .tl-bar-g:focus-visible .tl-pred { filter: brightness(1.15); }
+
+/* actual = solid teal (past a touch calmer, current brighter) */
+.tl-actual { fill: var(--teal); }
+.tl-actual.past { fill: var(--teal); opacity: 0.82; }
+.tl-actual.current { fill: var(--teal-light); }
+/* predicted = gold diagonal hatch (reads as forecast even in grayscale) */
+.tl-pred { fill: url(#tl-hatch); stroke: var(--gold); stroke-width: 0.75; stroke-opacity: 0.5; }
+.tl-current-outline { fill: none; stroke: var(--gold); stroke-width: 1.4; opacity: 0.7; }
+
 .chart-legend-center { justify-content: center; margin-block-start: var(--sp-2); }
-.chart-legend .sq { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.chart-legend .sq { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
 .chart-legend .sq.teal { background: var(--teal); }
-.chart-legend .sq.gold { background: var(--gold); }
+.chart-legend .sq.hatch {
+  background:
+    repeating-linear-gradient(45deg, var(--gold) 0 2px, transparent 2px 5px),
+    rgba(201, 162, 39, 0.18);
+  border: 1px solid var(--gold);
+}
+.tl-basis { text-align: center; font-size: 10.5px; color: var(--text-hint); margin-block-start: 4px; }
+
+/* selected-bar detail */
+.tl-detail { margin-block-start: var(--sp-2); padding-block-start: var(--sp-2); border-block-start: 1px solid var(--border); animation: page-in 200ms ease both; }
+.tl-detail-head { display: flex; align-items: center; gap: var(--sp-2); font-size: 14px; color: var(--text); }
+.tl-chip { font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: var(--radius-pill); }
+.tl-chip.past { background: rgba(0, 133, 122, 0.16); color: var(--teal-light); }
+.tl-chip.current { background: rgba(0, 133, 122, 0.16); color: var(--teal-light); }
+.tl-chip.future { background: var(--gold-dim); color: var(--gold); }
+.tl-detail-rows { display: flex; gap: var(--sp-3); flex-wrap: wrap; margin-block-start: 6px; font-size: 12.5px; color: var(--text-muted); }
+.tl-detail-rows b { color: var(--text); font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; gap: 3px; }
 
 /* ── Donut ── */
 .donut-wrap { display: flex; align-items: center; gap: var(--sp-4); flex-wrap: wrap; }
@@ -89,7 +115,9 @@
 .donut-seg {
   stroke-linecap: butt;
   animation: donut-in 600ms ease both;
-  transform-box: fill-box;
+  /* NOTE: no `transform-box: fill-box` — it would re-anchor the SVG
+     `transform="rotate(-90 100 100)"` to the fill box and shift the ring
+     off-centre (top gap + clipped bottom). Keep the default view-box origin. */
 }
 @keyframes donut-in { from { opacity: 0; } }
 .donut-total { fill: var(--text); font-size: 22px; font-weight: 800; font-family: var(--font); font-variant-numeric: tabular-nums; }

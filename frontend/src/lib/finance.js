@@ -192,49 +192,120 @@ export function dailySpendSeries(account, forecast) {
 }
 
 /**
- * Monthly outflow over the last `count` months, derived from REAL inputs so it
- * updates live and is never static:
- *   month total = fixed commitments (recurring) + variable spend that month
- *                 (from the actual non-blocked transactions)
- * The current month also adds the projected remaining variable spend, and is
- * split into a `fixed` base + `variable` top so the chart can stack them. When
- * income/fixed/transactions change, every bar changes. Marks peak + average.
+ * Spending TIMELINE for the analytics bar chart: a real forward forecast, not a
+ * flat history. Returns `pastN` months of actual spend + the current month
+ * (consumed base + predicted top) + `futureN` predicted months, so you see where
+ * spending is HEADING, not just where it's been.
+ *
+ * The prediction is trend-aware, not a copy-and-subtract:
+ *   level = winsorized, recency-weighted EWMA of observed monthly variable spend,
+ *           falling back to the discretionary budget when history is too thin,
+ *   trend = damped, capped linear-regression slope (only with enough data),
+ * projected forward with geometric damping and clamped to a sane cap.
+ *
+ * Each month stacks `actual` (consumed, teal) under `predicted` (forecast, gold).
+ * The current month's total is pinned to `fixed + forecast.projectedMonthlySpend`
+ * so the chart never contradicts the month-end forecast card. `basis` says whether
+ * the forecast came from observed behaviour or the budget (for honest labelling).
  */
-export function monthlySpendSeries(account, forecast, count = 6) {
+export function spendTimelineSeries(account, forecast, pastN = 3, futureN = 2) {
   const now = new Date()
-  const fixedMonthly = round(num(account.totalFixedExpenses))
+  const fixed = round(num(account.totalFixedExpenses))
+  const income = num(account.monthlyIncome)
+  const budget = num(account.monthlyBudget)
   const txns = Array.isArray(account.transactions) ? account.transactions : []
 
-  const variableByKey = {}
+  // Observed (real) variable spend per calendar month, from non-blocked transfers.
+  // Fixed commitments live in a separate store, so transactions are variable-only
+  // — no double counting.
+  const varByKey = {}
   for (const t of txns) {
     if (!t || t.blocked) continue
     const d = new Date(t.timestamp)
-    const key = `${d.getFullYear()}-${d.getMonth()}`
-    variableByKey[key] = (variableByKey[key] || 0) + num(t.amount)
+    if (Number.isNaN(d.getTime())) continue
+    const k = `${d.getFullYear()}-${d.getMonth()}`
+    varByKey[k] = (varByKey[k] || 0) + num(t.amount)
+  }
+  const keyOf = (d) => `${d.getFullYear()}-${d.getMonth()}`
+
+  // History window (up to 6 prior months) to fit the level + trend.
+  const hist = []
+  for (let k = 6; k >= 1; k--) hist.push(round(varByKey[keyOf(new Date(now.getFullYear(), now.getMonth() - k, 1))] || 0))
+  const monthsWithActivity = hist.filter((v) => v > 0).length
+
+  // Discretionary budget = the app's `monthlyBudget` (already variable-only), else
+  // a fraction of income-after-fixed. Used as the fallback forecast baseline.
+  const discretionary = income > 0 ? Math.max(0, income - fixed) : budget
+  const budgetedVar = budget > 0 ? budget : Math.round(discretionary * 0.6)
+
+  // Robust level: winsorized recency-weighted EWMA of observed spend, else budget.
+  const nonZero = hist.filter((v) => v > 0).sort((a, b) => a - b)
+  const median = nonZero.length ? nonZero[Math.floor((nonZero.length - 1) / 2)] : 0
+  let baseline
+  if (monthsWithActivity >= 2 && median > 0) {
+    const wins = hist.map((v) => Math.min(v, median * 3)) // clip outliers
+    let ewma = wins[0]
+    for (let i = 1; i < wins.length; i++) ewma = 0.5 * wins[i] + 0.5 * ewma
+    baseline = Math.max(ewma, budgetedVar * 0.05)
+  } else {
+    baseline = budgetedVar
   }
 
-  const months = []
-  for (let i = count - 1; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    const key = `${d.getFullYear()}-${d.getMonth()}`
-    const isCurrent = i === 0
-    let variable = variableByKey[key] || 0
-    if (isCurrent) variable += num(forecast?.projectedRemainingSpend) // project the rest of this month
-    variable = round(variable)
-    months.push({
-      year: d.getFullYear(),
-      month: d.getMonth(),
-      fixed: fixedMonthly,
-      variable,
-      total: fixedMonthly + variable,
-      isCurrent,
-      projected: isCurrent && num(forecast?.projectedRemainingSpend) > 0,
-    })
+  // Damped, capped linear trend (needs enough non-zero points to be meaningful).
+  let slope = 0
+  if (hist.length >= 2 && monthsWithActivity >= 4) {
+    const n = hist.length
+    const mx = (n - 1) / 2
+    const my = hist.reduce((s, v) => s + v, 0) / n
+    let sxy = 0, sxx = 0
+    for (let i = 0; i < n; i++) { sxy += (i - mx) * (hist[i] - my); sxx += (i - mx) * (i - mx) }
+    if (sxx > 0) slope = sxy / sxx
+    const capS = 0.25 * baseline
+    slope = Math.max(-capS, Math.min(capS, slope))
   }
+
+  const roomAfterFixed = income > 0 ? Math.max(0, income - fixed) : Number.POSITIVE_INFINITY
+  const cap = Math.min(Math.max(budget * 1.5, median * 2, baseline), roomAfterFixed)
+  const PHI = 0.6
+  const expectedVar = (j) => {
+    let damp = 0
+    for (let k = 1; k <= j; k++) damp += Math.pow(PHI, k) // geometric damping
+    return round(Math.max(0, Math.min(baseline + slope * damp, cap)))
+  }
+
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+  const daysLeft = Math.max(0, Math.min(daysInMonth, num(forecast?.daysLeft)))
+  const dayOfMonth = Math.max(1, Math.min(daysInMonth, daysInMonth - daysLeft))
+  const variableSoFar = round(varByKey[keyOf(now)] || 0)
+
+  const months = []
+  // Past months (oldest → newest): actual consumed = fixed + observed variable.
+  for (let k = pastN; k >= 1; k--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - k, 1)
+    const observed = round(varByKey[keyOf(d)] || 0)
+    const total = fixed + observed
+    months.push({ year: d.getFullYear(), month: d.getMonth(), kind: 'past', fixed, variable: observed, actual: total, predicted: 0, total, isCurrent: false, hasData: observed > 0 })
+  }
+  // Current month: consumed base + predicted top; total pinned to the forecast.
+  {
+    const projected = Math.max(0, num(forecast?.projectedMonthlySpend))
+    const total = round(fixed + projected)
+    const consumed = round(Math.min(total, fixed * (dayOfMonth / daysInMonth) + variableSoFar))
+    months.push({ year: now.getFullYear(), month: now.getMonth(), kind: 'current', fixed, variable: round(projected), actual: consumed, predicted: Math.max(0, total - consumed), total, isCurrent: true, hasData: true })
+  }
+  // Future months: pure forecast (fixed commitments + projected variable).
+  for (let j = 1; j <= futureN; j++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + j, 1)
+    const total = fixed + expectedVar(j)
+    months.push({ year: d.getFullYear(), month: d.getMonth(), kind: 'future', fixed, variable: expectedVar(j), actual: 0, predicted: total, total, isCurrent: false, hasData: false })
+  }
+
   const peak = Math.max(1, ...months.map((m) => m.total))
   months.forEach((m) => { m.isPeak = m.total === peak })
-  const avg = Math.round(months.reduce((s, m) => s + m.total, 0) / months.length)
-  return { months, peak, avg }
+  // Average over the actual/near-term side (past + current), not pure forecasts.
+  const actualSide = months.filter((m) => m.kind !== 'future')
+  const avg = Math.round(actualSide.reduce((s, m) => s + m.total, 0) / Math.max(1, actualSide.length))
+  return { months, peak, avg, basis: monthsWithActivity >= 2 ? 'behavior' : 'budget' }
 }
 
 /** Fixed-expense totals grouped by category, for the donut. */

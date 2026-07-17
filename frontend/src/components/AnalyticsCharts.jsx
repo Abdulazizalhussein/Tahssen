@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
 import RiyalSymbol from './RiyalSymbol'
 import './AnalyticsCharts.css'
 
@@ -70,18 +70,30 @@ export function SpendingTrendChart({ series, t, isRTL }) {
   )
 }
 
-/* ══════════ Monthly spending — which months rise & fall ══════════ */
-export function MonthlyBarsChart({ series, t, lang, isRTL }) {
-  const { months, peak, avg } = series
-  const W = 340, H = 184, padT = 22, padB = 26, padX = 10
+/* ══════════ Spending timeline — past actual → now → future forecast ══════════ */
+const KIND_KEY = { past: 'tlKindPast', current: 'tlKindCurrent', future: 'tlKindFuture' }
+
+export function MonthlyBarsChart({ series, t, lang, isRTL, formatMoney }) {
+  const { months, peak, avg, basis } = series
+  const [sel, setSel] = useState(null)
+  const W = 340, H = 196, padT = 24, padB = 28, padX = 12
   const plotW = W - padX * 2, plotH = H - padT - padB
   const ordered = isRTL ? [...months].reverse() : months
   const n = ordered.length
   const slot = plotW / n
-  const barW = Math.min(34, slot * 0.6)
-  const yFor = (v) => H - padB - (v / peak) * plotH
+  const barW = Math.min(30, slot * 0.56)
+  const bottom = H - padB
+  const yFor = (v) => bottom - (Math.max(0, v) / peak) * plotH
   const avgY = yFor(avg)
+  const cx = (i) => padX + slot * i + slot / 2
   const monthLabel = (m) => new Date(m.year, m.month, 1).toLocaleDateString(lang === 'ar' ? 'ar-SA-u-ca-gregory' : 'en-US', { month: 'short' })
+
+  // Forecast region (current + future) vs the past region, direction-aware.
+  const curIdx = ordered.findIndex((m) => m.isCurrent)
+  const nowX = isRTL ? padX + slot * (curIdx + 1) : padX + slot * curIdx
+  const zone = isRTL ? { x: padX, w: nowX - padX } : { x: nowX, w: W - padX - nowX }
+
+  const selM = sel != null ? ordered[sel] : null
 
   return (
     <div className="chart-card">
@@ -89,36 +101,77 @@ export function MonthlyBarsChart({ series, t, lang, isRTL }) {
         <span className="chart-title">{t('monthlySpending')}</span>
         <span className="chart-sub">{t('avgLabel')} {compact(avg)} <RiyalSymbol size="0.7em" /></span>
       </div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="chart-svg" role="img" aria-label={t('monthlySpending')}>
+
+      <svg viewBox={`0 0 ${W} ${H}`} className="chart-svg tl-chart" role="img" aria-label={t('monthlySpending')}>
+        <defs>
+          {/* forecast texture — hatch reads as "predicted" even in grayscale */}
+          <pattern id="tl-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect width="6" height="6" fill="var(--gold)" opacity="0.18" />
+            <line x1="0" y1="0" x2="0" y2="6" stroke="var(--gold)" strokeWidth="2.4" />
+          </pattern>
+        </defs>
+
+        {/* forecast zone background + "now" divider */}
+        <rect x={zone.x} y={padT - 6} width={Math.max(0, zone.w)} height={plotH + 6} className="tl-forecast-zone" />
+        <line x1={nowX} y1={padT - 6} x2={nowX} y2={bottom} className="tl-now-line" />
+        <text x={nowX} y={padT - 10} className="tl-now-label" textAnchor="middle">{t('tlNow')}</text>
+
         <line x1={padX} y1={avgY} x2={W - padX} y2={avgY} className="chart-avg-line" />
+
         {ordered.map((m, i) => {
-          const cx = padX + slot * i + slot / 2
-          const baseX = cx - barW / 2
-          const totalH = Math.max(2, (m.total / peak) * plotH)
-          const fixedH = Math.max(0, (m.fixed / peak) * plotH)
-          const varH = Math.max(0, totalH - fixedH)
-          const bottom = H - padB
+          const bx = cx(i) - barW / 2
+          const actualH = Math.max(0, (m.actual / peak) * plotH)
+          const predH = Math.max(0, (m.predicted / peak) * plotH)
+          const totalH = Math.max(2, actualH + predH)
+          const dim = sel != null && sel !== i ? ' dim' : ''
+          const on = sel === i ? ' on' : ''
           return (
-            <g key={i} style={{ transformOrigin: `center ${bottom}px`, animationDelay: `${i * 70}ms` }} className="chart-bar-group">
-              {/* fixed base */}
-              <rect x={baseX} y={bottom - fixedH} width={barW} height={fixedH} className={`chart-bar fixed${m.isCurrent ? ' current' : ''}`} />
-              {/* variable top */}
-              {varH > 0.5 && (
-                <rect x={baseX} y={bottom - fixedH - varH} width={barW} height={varH} rx="4"
-                  className={`chart-bar variable${m.isPeak ? ' peak' : ''}${m.projected ? ' projected' : ''}`} />
+            <g key={i} className={`tl-bar-g${dim}${on}`} style={{ transformOrigin: `center ${bottom}px`, animationDelay: `${i * 60}ms` }}
+               onClick={() => setSel(sel === i ? null : i)} role="button" tabIndex={0}
+               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSel(sel === i ? null : i) } }}
+               aria-label={`${monthLabel(m)} · ${t(KIND_KEY[m.kind])}`}>
+              {/* actual (consumed) — solid */}
+              {actualH > 0.5 && (
+                <rect x={bx} y={bottom - actualH} width={barW} height={actualH}
+                  className={`tl-actual ${m.kind}`} rx={predH > 0.5 ? 0 : 4} />
               )}
-              {(m.isPeak || m.isCurrent) && (
-                <text x={cx} y={bottom - totalH - 5} className="chart-bar-value" textAnchor="middle">{compact(m.total)}</text>
+              {/* predicted (forecast) — hatched */}
+              {predH > 0.5 && (
+                <rect x={bx} y={bottom - actualH - predH} width={barW} height={predH} rx="4" className="tl-pred" />
               )}
-              <text x={cx} y={H - 8} className={`chart-axis${m.isCurrent ? ' today' : ''}`} textAnchor="middle">{monthLabel(m)}</text>
+              {/* current bar outline to mark "you are here" */}
+              {m.isCurrent && <rect x={bx - 1.5} y={bottom - totalH - 1.5} width={barW + 3} height={totalH + 1.5} rx="5" className="tl-current-outline" />}
+              {(m.isPeak || m.isCurrent || sel === i) && (
+                <text x={cx(i)} y={bottom - totalH - 5} className="chart-bar-value" textAnchor="middle">{compact(m.total)}</text>
+              )}
+              <text x={cx(i)} y={H - 9} className={`chart-axis${m.isCurrent ? ' today' : ''}`} textAnchor="middle">{monthLabel(m)}</text>
             </g>
           )
         })}
       </svg>
-      <div className="chart-legend chart-legend-center">
-        <span><i className="sq teal" /> {t('fixed')}</span>
-        <span><i className="sq gold" /> {t('variableSpending')}</span>
-      </div>
+
+      {/* detail (selected) or legend */}
+      {selM ? (
+        <div className="tl-detail">
+          <div className="tl-detail-head">
+            <span className={`tl-chip ${selM.kind}`}>{t(KIND_KEY[selM.kind])}</span>
+            <strong>{monthLabel(selM)}</strong>
+          </div>
+          <div className="tl-detail-rows">
+            {selM.actual > 0 && <span>{t('tlConsumed')}: <b>{formatMoney(selM.actual)} <RiyalSymbol size="0.75em" /></b></span>}
+            {selM.predicted > 0 && <span>{t('tlForecast')}: <b>{formatMoney(selM.predicted)} <RiyalSymbol size="0.75em" /></b></span>}
+            <span>{t('tlTotal')}: <b>{formatMoney(selM.total)} <RiyalSymbol size="0.75em" /></b></span>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="chart-legend chart-legend-center">
+            <span><i className="sq teal" /> {t('tlActual')}</span>
+            <span><i className="sq hatch" /> {t('tlPredicted')}</span>
+          </div>
+          <p className="tl-basis">{t(basis === 'behavior' ? 'tlBasisBehavior' : 'tlBasisBudget')}</p>
+        </>
+      )}
     </div>
   )
 }
@@ -129,16 +182,16 @@ const CAT_KEY = { rent: 'catRent', utilities: 'catUtilities', subscription: 'cat
 
 export function CategoryDonut({ series, t, formatMoney }) {
   const { entries, total } = series
+  // Normalize the ring to pathLength=100 so dashes are in percent units. This
+  // avoids the getTotalLength() vs 2πr rounding gap that left a 100% segment
+  // rendering as a partial arc.
   const arcs = useMemo(() => {
     if (total <= 0) return []
-    const R = 62, C = 100, sw = 22
-    const circ = 2 * Math.PI * R
     let offset = 0
     return entries.map((e, i) => {
-      const frac = e.amount / total
-      const dash = frac * circ
-      const seg = { key: e.category, color: DONUT_COLORS[i % DONUT_COLORS.length], amount: e.amount, pct: Math.round(frac * 100), R, C, sw, circ, dash, offset }
-      offset += dash
+      const pct = (e.amount / total) * 100
+      const seg = { key: e.category, color: DONUT_COLORS[i % DONUT_COLORS.length], amount: e.amount, pct, offset }
+      offset += pct
       return seg
     })
   }, [entries, total])
@@ -154,11 +207,12 @@ export function CategoryDonut({ series, t, formatMoney }) {
           {arcs.map((a, i) => (
             <circle
               key={i}
-              cx="100" cy="100" r={a.R}
+              cx="100" cy="100" r="62"
               fill="none"
               stroke={a.color}
-              strokeWidth={a.sw}
-              strokeDasharray={`${a.dash} ${a.circ - a.dash}`}
+              strokeWidth="22"
+              pathLength="100"
+              strokeDasharray={`${a.pct} ${100 - a.pct}`}
               strokeDashoffset={-a.offset}
               transform="rotate(-90 100 100)"
               className="donut-seg"

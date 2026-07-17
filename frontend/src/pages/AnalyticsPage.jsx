@@ -19,7 +19,7 @@ import {
 import { useAccount } from '../store/AccountContext'
 import { SectionTitle, ErrorBox } from '../components/ui'
 import { generateInsights, computeStats } from '../agents/chatAgent'
-import { computeHealth, computeForecast, dailySpendSeries, monthlySpendSeries, categorySpendSeries } from '../lib/finance'
+import { computeHealth, computeForecast, dailySpendSeries, spendTimelineSeries, categorySpendSeries } from '../lib/finance'
 import { riskColorByScore } from '../theme'
 import RiyalSymbol from '../components/RiyalSymbol'
 import { SpendingTrendChart, MonthlyBarsChart, CategoryDonut } from '../components/AnalyticsCharts'
@@ -468,7 +468,7 @@ export default function AnalyticsPage() {
   const health = computeHealth(account)
   const forecast = computeForecast(account)
   const dailySeries = dailySpendSeries(account, forecast)
-  const monthlySeries = monthlySpendSeries(account, forecast)
+  const monthlySeries = spendTimelineSeries(account, forecast)
   const categorySeries = categorySpendSeries(fixedExpenses)
 
   const load = useCallback(async () => {
@@ -601,7 +601,7 @@ export default function AnalyticsPage() {
           {/* Spending trajectory + monthly trend charts */}
           <SectionTitle icon={TrendingUp}>{t('spendingCharts')}</SectionTitle>
           <SpendingTrendChart series={dailySeries} t={t} isRTL={isRTL} />
-          <MonthlyBarsChart series={monthlySeries} t={t} lang={lang} isRTL={isRTL} />
+          <MonthlyBarsChart series={monthlySeries} t={t} lang={lang} isRTL={isRTL} formatMoney={formatMoney} />
           {categorySeries.total > 0 && (
             <CategoryDonut series={categorySeries} t={t} formatMoney={formatMoney} />
           )}
