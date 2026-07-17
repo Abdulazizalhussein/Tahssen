@@ -1,0 +1,104 @@
+/* ============================================================
+   Analytics charts — dark navy + gold, RTL-aware, animated
+   ============================================================ */
+
+.chart-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-4);
+  margin-block-end: var(--sp-4);
+  box-shadow: var(--shadow-card);
+}
+
+.chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-block-end: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.chart-title { font-size: 15px; font-weight: 700; color: var(--text); }
+.chart-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-legend { display: flex; gap: var(--sp-3); flex-wrap: wrap; }
+.chart-legend span { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-muted); }
+.chart-legend .ln { width: 14px; height: 0; border-block-start: 2.5px solid; border-radius: 2px; }
+.chart-legend .ln.gold { border-color: var(--gold); }
+.chart-legend .ln.teal { border-color: var(--teal-light); }
+.chart-legend .ln.muted { border-color: var(--text-hint); }
+.chart-legend .ln.dashed { border-style: dashed; }
+
+.chart-svg { width: 100%; height: auto; display: block; overflow: visible; }
+
+.chart-axis { fill: var(--text-hint); font-size: 9.5px; font-family: var(--font); }
+.chart-axis.today { fill: var(--gold); font-weight: 700; }
+
+/* ── Trend line ── */
+.chart-budget-line { stroke: var(--text-hint); stroke-width: 1; stroke-dasharray: 4 4; opacity: 0.7; }
+.chart-budget-label { fill: var(--text-hint); font-size: 9px; font-family: var(--font); }
+
+.chart-line-actual {
+  stroke: var(--gold);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: chart-draw 1s ease forwards;
+}
+.chart-line-proj {
+  stroke: var(--teal-light);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 5 5;
+  opacity: 0.9;
+}
+@keyframes chart-draw { to { stroke-dashoffset: 0; } }
+
+.chart-today-dot { fill: var(--gold); stroke: var(--bg-card); stroke-width: 2; }
+
+/* ── Bars ── */
+.chart-avg-line { stroke: var(--text-hint); stroke-width: 1; stroke-dasharray: 3 4; opacity: 0.6; }
+.chart-bar {
+  fill: var(--teal);
+  animation: chart-grow 520ms cubic-bezier(0.2, 0.9, 0.3, 1.1) both;
+}
+.chart-bar.current { fill: var(--teal-light); }
+.chart-bar.peak { fill: var(--gold); }
+@keyframes chart-grow { from { transform: scaleY(0); } }
+.chart-bar-value { fill: var(--text-muted); font-size: 9.5px; font-weight: 700; font-family: var(--font); font-variant-numeric: tabular-nums; }
+
+/* ── Donut ── */
+.donut-wrap { display: flex; align-items: center; gap: var(--sp-4); flex-wrap: wrap; }
+.donut-svg { width: 150px; height: 150px; flex-shrink: 0; }
+.donut-seg {
+  stroke-linecap: butt;
+  animation: donut-in 600ms ease both;
+  transform-box: fill-box;
+}
+@keyframes donut-in { from { opacity: 0; } }
+.donut-total { fill: var(--text); font-size: 22px; font-weight: 800; font-family: var(--font); font-variant-numeric: tabular-nums; }
+.donut-total-sub { fill: var(--text-muted); font-size: 8.5px; font-family: var(--font); }
+
+.donut-legend { flex: 1; min-width: 150px; display: flex; flex-direction: column; gap: var(--sp-2); }
+.donut-legend-row { display: flex; align-items: center; gap: var(--sp-2); font-size: 12.5px; }
+.donut-swatch { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.donut-legend-name { color: var(--text-muted); flex: 1; }
+.donut-legend-val {
+  color: var(--text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}

@@ -19,8 +19,10 @@ import {
 import { useAccount } from '../store/AccountContext'
 import { SectionTitle, ErrorBox } from '../components/ui'
 import { generateInsights, computeStats } from '../agents/chatAgent'
+import { computeHealth, computeForecast, dailySpendSeries, monthlySpendSeries, categorySpendSeries } from '../lib/finance'
 import { riskColorByScore } from '../theme'
 import RiyalSymbol from '../components/RiyalSymbol'
+import { SpendingTrendChart, MonthlyBarsChart, CategoryDonut } from '../components/AnalyticsCharts'
 import './AnalyticsPage.css'
 
 const CATEGORIES = [
@@ -460,6 +462,15 @@ export default function AnalyticsPage() {
   const stats = computeStats(transactions)
   const hasIncome = monthlyIncome > 0
 
+  // Computed SYNCHRONOUSLY from the live account, so the health score, the
+  // forecast and the charts all update the instant income/expenses change —
+  // no stale async reload, no need to press "refresh".
+  const health = computeHealth(account)
+  const forecast = computeForecast(account)
+  const dailySeries = dailySpendSeries(account, forecast)
+  const monthlySeries = monthlySpendSeries(account, forecast)
+  const categorySeries = categorySpendSeries(fixedExpenses)
+
   const load = useCallback(async () => {
     if (monthlyIncome <= 0) return
     setBusy(true)
@@ -473,7 +484,7 @@ export default function AnalyticsPage() {
       setBusy(false)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [transactions.length, lang, monthlyIncome])
+  }, [transactions.length, lang, monthlyIncome, totalFixedExpenses, monthlySpent])
 
   useEffect(() => {
     load()
@@ -555,12 +566,11 @@ export default function AnalyticsPage() {
           {/* Health Score */}
           <div className="analytics-health-card">
             <span className="analytics-card-label">{t('healthScore')}</span>
-            {busy && !data ? (
-              <div className="analytics-health-loading">
-                <div className="spinner" style={{ width: 36, height: 36, borderWidth: 3 }} />
-              </div>
-            ) : (
-              <HealthRing score={data ? data.healthScore : 0} />
+            <HealthRing score={health.score} />
+            {health.deficit && (
+              <p className="analytics-health-note">
+                {t('deficit')}: {formatMoney(Math.abs(health.surplus))} <RiyalSymbol size="0.75em" /> / {t('monthlyIncome')}
+              </p>
             )}
           </div>
 
@@ -587,6 +597,14 @@ export default function AnalyticsPage() {
             t={t}
             isRTL={isRTL}
           />
+
+          {/* Spending trajectory + monthly trend charts */}
+          <SectionTitle icon={TrendingUp}>{t('spendingCharts')}</SectionTitle>
+          <SpendingTrendChart series={dailySeries} t={t} isRTL={isRTL} formatMoney={formatMoney} />
+          <MonthlyBarsChart series={monthlySeries} t={t} lang={lang} isRTL={isRTL} formatMoney={formatMoney} />
+          {categorySeries.total > 0 && (
+            <CategoryDonut series={categorySeries} t={t} formatMoney={formatMoney} />
+          )}
 
           {/* Spending Stats */}
           <SectionTitle icon={PieChart}>{t('spendingBreakdown')}</SectionTitle>
@@ -638,27 +656,23 @@ export default function AnalyticsPage() {
             </>
           )}
 
-          {/* Month-end Prediction */}
-          {!!data?.monthEndPrediction && (
-            <>
-              <SectionTitle icon={Calendar}>{t('monthEndPrediction')}</SectionTitle>
-              <div className="analytics-predict-card">
-                <span className="analytics-predict-icon">
-                  <TrendingDown size={20} color="var(--teal-light)" />
-                </span>
-                <div className="analytics-predict-body">
-                  <p className="analytics-predict-text">
-                    {data.monthEndPrediction}
-                  </p>
-                  {typeof data.predictedMonthEndBalance === 'number' && (
-                    <div className="analytics-predict-value">
-                      {formatMoney(data.predictedMonthEndBalance)} <RiyalSymbol size="0.8em" />
-                    </div>
-                  )}
-                </div>
+          {/* Month-end Prediction (live from the forecast) */}
+          <SectionTitle icon={Calendar}>{t('monthEndPrediction')}</SectionTitle>
+          <div className="analytics-predict-card">
+            <span className="analytics-predict-icon">
+              <TrendingDown size={20} color="var(--teal-light)" />
+            </span>
+            <div className="analytics-predict-body">
+              <p className="analytics-predict-text">
+                {forecast.projectedRemainingSpend > 0
+                  ? t('forecastSpendNote').replace('{n}', formatMoney(forecast.projectedRemainingSpend))
+                  : t('forecastSubtitle')}
+              </p>
+              <div className="analytics-predict-value">
+                {formatMoney(forecast.predictedMonthEndBalance)} <RiyalSymbol size="0.8em" />
               </div>
-            </>
-          )}
+            </div>
+          </div>
 
           {/* Risk History */}
           <SectionTitle icon={BarChart2}>{t('riskHistory')}</SectionTitle>

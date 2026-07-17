@@ -35,7 +35,7 @@ const svcBase = new URL('../service/agents/', import.meta.url)
 
 // ── 1. Finance model ────────────────────────────────────────────────
 {
-  const { computeForecast, computeHealth, computeStats } = await import(new URL('lib/finance.js', base))
+  const { computeForecast, computeHealth, computeStats, dailySpendSeries, monthlySpendSeries, categorySpendSeries } = await import(new URL('lib/finance.js', base))
 
   // Forecast must project a change, not copy the balance.
   const fFresh = computeForecast({ balance: 45230, monthlyIncome: 18000, totalFixedExpenses: 0, monthlySpent: 0, monthlyBudget: 8500 })
@@ -59,6 +59,17 @@ const svcBase = new URL('../service/agents/', import.meta.url)
 
   const stats = computeStats([{ amount: 100, blocked: false, beneficiary: 'A', timestamp: 1 }, { amount: 200, blocked: true, beneficiary: 'B', timestamp: 2 }])
   check('stats', 'counts sent/blocked', stats.sentCount === 1 && stats.blockedCount === 1 && stats.totalBlocked === 200)
+
+  // Chart series must be non-empty and consistent even with sparse data.
+  const acc = { balance: 45230, monthlyIncome: 18000, totalFixedExpenses: 6000, monthlySpent: 0, monthlyBudget: 8500, transactions: [], fixedExpenses: [{ category: 'rent', amount: 4000 }, { category: 'utilities', amount: 2000 }] }
+  const fc = computeForecast(acc)
+  const daily = dailySpendSeries(acc, fc)
+  check('charts', 'daily series has actual + projected + budget', daily.actual.length >= 1 && daily.projected.length >= 1 && daily.budget > 0 && daily.maxY > 0)
+  check('charts', 'projection ends ≥ actual (spend accrues)', daily.projectedTotal >= (daily.actual.at(-1)?.value ?? 0))
+  const monthly = monthlySpendSeries(acc, fc)
+  check('charts', 'monthly series has months + a peak', monthly.months.length === 6 && monthly.months.some((m) => m.isPeak) && monthly.avg >= 0)
+  const cat = categorySpendSeries(acc.fixedExpenses)
+  check('charts', 'category donut totals match', cat.total === 6000 && cat.entries.length === 2)
 }
 
 // ── 2. Community registry ───────────────────────────────────────────
