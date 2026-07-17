@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { interrogate, analyze, chat } from '@tahseen/service'
+import { interrogate, analyze, chat, recommend } from '@tahseen/service'
 import { AiNotConfiguredError } from '@tahseen/service'
 
 const router = Router()
@@ -119,6 +119,21 @@ router.post('/ai/chat', async (req, res) => {
     res.json({ reply })
   } catch (err) {
     aiError(res, err, 'chat')
+  }
+})
+
+// ── POST /api/ai/recommend ─────────────────────────────────────────
+
+router.post('/ai/recommend', async (req, res) => {
+  const { accountData } = req.body
+  if (!accountData || typeof accountData !== 'object')
+    return res.status(400).json({ error: 'INVALID_BODY', detail: 'accountData object required' })
+
+  try {
+    const result = await recommend({ accountData })
+    res.json(result)
+  } catch (err) {
+    aiError(res, err, 'recommend')
   }
 })
 

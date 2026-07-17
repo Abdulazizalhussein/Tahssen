@@ -395,7 +395,8 @@ export default function AddBeneficiaryModal({ visible, onClose, onSaved }) {
               onChange={(e) => setIban(e.target.value.toUpperCase())}
               autoCapitalize="characters"
               autoComplete="off"
-              dir="ltr"
+              dir={isRTL ? 'rtl' : 'ltr'}
+              style={{ textAlign: 'start' }}
             />
           </div>
         </div>

@@ -189,7 +189,7 @@ export default function SettingsPage() {
                 placeholder="0"
                 autoFocus
                 onKeyDown={(e) => e.key === 'Enter' && saveIncome()}
-                dir="ltr"
+                dir={isRTL ? 'rtl' : 'ltr'}
               />
               <button className="btn btn-gold btn-sm" onClick={saveIncome}>{t('save')}</button>
               <button className="btn btn-ghost btn-sm" onClick={() => setEditingIncome(false)}>
@@ -320,7 +320,7 @@ export default function SettingsPage() {
               value={form.amount}
               onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
               style={{ marginBlockEnd: 'var(--sp-3)' }}
-              dir="ltr"
+              dir={isRTL ? 'rtl' : 'ltr'}
             />
 
             {/* Category select */}

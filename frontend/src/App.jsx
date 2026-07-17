@@ -18,7 +18,7 @@ import ChatPage         from './pages/ChatPage'
 import AnalyticsPage    from './pages/AnalyticsPage'
 import BeneficiariesPage from './pages/BeneficiariesPage'
 import SettingsPage     from './pages/SettingsPage'
-import ZakatPage        from './pages/ZakatPage'
+import RecommendationsPage from './pages/RecommendationsPage'
 
 // ----------------------------------------------------------------
 // LangSync — keeps <html> dir + lang in sync with account context
@@ -97,10 +97,10 @@ function AppRoutes() {
           <Route path="home"           element={<HomePage />} />
           <Route path="transfer"       element={<TransferPage />} />
           <Route path="chat"           element={<ChatPage />} />
-          <Route path="analytics"      element={<AnalyticsPage />} />
-          <Route path="beneficiaries"  element={<BeneficiariesPage />} />
-          <Route path="zakat"          element={<ZakatPage />} />
-          <Route path="settings"       element={<SettingsPage />} />
+          <Route path="analytics"       element={<AnalyticsPage />} />
+          <Route path="beneficiaries"   element={<BeneficiariesPage />} />
+          <Route path="recommendations" element={<RecommendationsPage />} />
+          <Route path="settings"        element={<SettingsPage />} />
         </Route>
 
         {/* Fallback */}

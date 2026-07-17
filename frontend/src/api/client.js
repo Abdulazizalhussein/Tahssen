@@ -59,6 +59,20 @@ export async function apiChat(messages, accountData) {
   return d.reply
 }
 
+export async function apiRecommend(account) {
+  const accountData = {
+    balance: account.balance,
+    monthlyIncome: account.monthlyIncome,
+    totalFixedExpenses: account.totalFixedExpenses,
+    monthlySpent: account.monthlySpent,
+    monthlyBudget: account.monthlyBudget,
+    fixedExpenses: account.fixedExpenses,
+    transactions: account.transactions,
+    lang: account.lang,
+  }
+  return post('/api/ai/recommend', { accountData })
+}
+
 export async function apiHealth() {
   const r = await fetch(`${BASE}/api/health`)
   if (!r.ok) throw new Error(`API ${r.status}`)
