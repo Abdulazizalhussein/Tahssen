@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Zap, Clock, ArrowUpRight, MessageCircle, BarChart2, Users, Inbox, Activity, Sparkles, CalendarDays } from 'lucide-react'
+import { Zap, Clock, ArrowUpRight, MessageCircle, BarChart2, Users, Inbox, Activity, Sparkles, CalendarDays, Network } from 'lucide-react'
 import { useAccount } from '../store/AccountContext'
 import BalanceCard from '../components/BalanceCard'
 import TransactionItem from '../components/TransactionItem'
@@ -103,6 +103,11 @@ export default function HomePage() {
           label={t('transfer')}
           primary
           onClick={() => navigate('/app/transfer')}
+        />
+        <QuickAction
+          icon={Network}
+          label={t('community')}
+          onClick={() => navigate('/app/community')}
         />
         <QuickAction
           icon={Sparkles}

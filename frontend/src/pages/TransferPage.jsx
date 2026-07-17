@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   Shield,
   ShieldCheck,
+  ShieldAlert,
   AlertTriangle,
   Check,
 } from 'lucide-react'
@@ -24,7 +25,39 @@ import RiskMeter from '../components/RiskMeter'
 import RiyalSymbol from '../components/RiyalSymbol'
 import { getNextQuestion } from '../agents/transferAgent'
 import { analyzeTransfer } from '../agents/fraudAgent'
+import { lookupPayee } from '../store/community'
+import CommunityAlert from '../components/CommunityAlert'
+import ReportFraudModal from '../components/ReportFraudModal'
 import './TransferPage.css'
+
+// Build a risk verdict from a community fraud report so a reported payee is
+// stopped even before the AI conversation. More reports → stronger action.
+function communityAssessment(community, t, lang) {
+  const net = community.network
+  const reasons = (net.reasons || []).slice(0, 2).map((r) => (lang === 'en' ? r.en || r.ar : r.ar))
+  if (community.kind === 'direct') {
+    const count = net.reportCount || 1
+    const score = Math.min(100, 74 + count * 4) // 1 report → 78 (high), 2+ → block
+    return {
+      riskScore: score,
+      riskLevel: score >= 80 ? 'critical' : 'high',
+      recommendation: score >= 80 ? 'block' : 'warn',
+      reasoning: t('communityWarnBody').replace('{n}', String(count)),
+      redFlags: [t('communityWarnTitle'), ...reasons],
+      predictions: [t('communityWarnBody').replace('{n}', String(count))],
+      community,
+    }
+  }
+  return {
+    riskScore: 66,
+    riskLevel: 'high',
+    recommendation: 'warn',
+    reasoning: t('communityLinkedBody').replace('{payee}', net.payee),
+    redFlags: [t('communityLinkedTitle')],
+    predictions: [],
+    community,
+  }
+}
 
 // ── Step constants ────────────────────────────────────────────
 const STEP = { PICK: 0, AMOUNT: 1, INTERROGATE: 2, ASSESS: 3, RESULT: 4 }
@@ -176,6 +209,7 @@ export default function TransferPage() {
   const [assessment, setAssessment] = useState(null)
   const [result, setResult] = useState(null)  // {blocked}
   const [committing, setCommitting] = useState(false)  // guards confirm/block against double-submit
+  const [reportModal, setReportModal] = useState(false) // report-to-community from the result screen
 
   // Scroll-to-bottom ref for chat
   const scrollRef = useRef(null)
@@ -220,6 +254,7 @@ export default function TransferPage() {
     setAssessment(null)
     setResult(null)
     setError(null)
+    setReportModal(false)
   }
 
   // ── Pick beneficiary ──────────────────────────────────────
@@ -317,6 +352,16 @@ export default function TransferPage() {
   // ── Start interrogation (called from AMOUNT step) ─────────
   const startInterrogation = useCallback(async () => {
     setError(null)
+
+    // Community check first — a reported payee is flagged immediately, before
+    // any AI conversation, so the warning always reaches whoever transfers.
+    const community = lookupPayee(beneficiary, iban)
+    if (community.found) {
+      setAssessment(communityAssessment(community, t, lang))
+      setStep(STEP.ASSESS)
+      return
+    }
+
     setStep(STEP.INTERROGATE)
     setBusy(true)
     try {
@@ -333,7 +378,7 @@ export default function TransferPage() {
     } finally {
       setBusy(false)
     }
-  }, [beneficiary, amount, previousTransfers, handleQuestionResult, t, lang])
+  }, [beneficiary, iban, amount, previousTransfers, handleQuestionResult, t, lang])
 
   // ── Send answer in chat ───────────────────────────────────
   const sendAnswer = useCallback(async () => {
@@ -599,9 +644,11 @@ export default function TransferPage() {
             <AssessmentView
               assessment={assessment}
               t={t}
+              lang={lang}
               isRTL={isRTL}
               onConfirm={confirm}
               onBlock={block}
+              onSeeNetwork={() => navigate('/app/community')}
               busy={committing}
             />
           )}
@@ -620,6 +667,7 @@ export default function TransferPage() {
             navigate('/app/home')
           }}
           onAnother={resetFlow}
+          onReport={() => setReportModal(true)}
         />
       )}
 
@@ -649,6 +697,13 @@ export default function TransferPage() {
 
       {/* ── Add beneficiary modal ── */}
       <AddBeneficiaryModal visible={addModal} onClose={() => setAddModal(false)} />
+
+      {/* ── Report-to-community modal (from a blocked result) ── */}
+      <ReportFraudModal
+        visible={reportModal}
+        onClose={() => setReportModal(false)}
+        prefill={{ payee: beneficiary, iban, amount: Number(amount) || 0 }}
+      />
     </div>
   )
 }
@@ -727,7 +782,7 @@ function ChatLine({ role, content }) {
   return <div className="transfer-chat-line user">{content}</div>
 }
 
-function AssessmentView({ assessment, t, isRTL, onConfirm, onBlock, busy }) {
+function AssessmentView({ assessment, t, lang, isRTL, onConfirm, onBlock, onSeeNetwork, busy }) {
   const band  = riskBand(assessment.riskScore)
   const color = band.color
   const label = t(band.key)
@@ -735,6 +790,11 @@ function AssessmentView({ assessment, t, isRTL, onConfirm, onBlock, busy }) {
 
   return (
     <div>
+      {/* Community warning (reported payee) */}
+      {assessment.community && (
+        <CommunityAlert community={assessment.community} t={t} lang={lang} onSeeNetwork={onSeeNetwork} />
+      )}
+
       {/* Gauge */}
       <div className="transfer-meter-wrap">
         <RiskMeter score={assessment.riskScore} label={t('riskScore')} />
@@ -846,7 +906,7 @@ function ListLine({ text, icon }) {
   )
 }
 
-function ResultView({ blocked, balance, formatMoney, t, onDone, onAnother }) {
+function ResultView({ blocked, balance, formatMoney, t, onDone, onAnother, onReport }) {
   const color = blocked ? 'var(--danger)' : 'var(--success)'
 
   return (
@@ -872,6 +932,13 @@ function ResultView({ blocked, balance, formatMoney, t, onDone, onAnother }) {
             {formatMoney(balance)} <RiyalSymbol size="0.8em" />
           </span>
         </div>
+      )}
+
+      {/* Turn a blocked scam into community protection for everyone else. */}
+      {blocked && (
+        <button className="transfer-report-community" onClick={onReport}>
+          <ShieldAlert size={16} /> {t('reportToCommunity')}
+        </button>
       )}
 
       <button className="transfer-primary-btn" onClick={onDone}>

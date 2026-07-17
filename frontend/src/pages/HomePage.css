@@ -208,7 +208,8 @@
 /* ── Quick actions grid ───────────────────────────────────── */
 
 .home-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--sp-3);
 }
 

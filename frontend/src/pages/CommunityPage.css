@@ -1,0 +1,150 @@
+/* ============================================================
+   Community Protection Network — dark navy + gold, RTL
+   ============================================================ */
+
+.community-page { animation: page-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+.community-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  margin-block-end: var(--sp-5);
+}
+
+.community-head-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gold-dim);
+  border: 1px solid var(--gold-border);
+}
+
+.community-title { font-size: 22px; font-weight: 800; color: var(--text); line-height: 1.2; }
+.community-intro { margin-block-start: 4px; font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+
+/* ── Stats ──────────────────────────────────────────────── */
+.community-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-2);
+  margin-block-end: var(--sp-4);
+}
+
+.community-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: var(--sp-4) var(--sp-2);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  text-align: center;
+}
+
+.community-stat-value { font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.community-stat-label { font-size: 11px; color: var(--text-muted); }
+
+.community-report-btn { margin-block-end: var(--sp-3); }
+
+/* ── Reported payee cards ───────────────────────────────── */
+.community-list { display: flex; flex-direction: column; gap: var(--sp-3); }
+
+.payee-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: border-color var(--transition);
+}
+
+.payee-card.open { border-color: var(--gold-border); }
+
+.payee-card-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: var(--sp-4);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: start;
+}
+
+.payee-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--danger-dim);
+  border: 1px solid var(--danger-border);
+}
+
+.payee-info { flex: 1; min-width: 0; }
+
+.payee-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+.payee-name { font-size: 15px; font-weight: 700; color: var(--text); }
+
+.payee-count {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  background: var(--danger-dim);
+  color: var(--danger);
+}
+
+.payee-meta { display: flex; align-items: center; gap: 6px; margin-block-start: 4px; font-size: 12px; }
+.payee-cat { color: var(--gold); font-weight: 600; }
+.payee-when { color: var(--text-hint); }
+
+.payee-reason {
+  margin-block-start: 6px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.payee-chevron { flex-shrink: 0; transition: transform var(--transition); margin-block-start: 4px; }
+.payee-card.open .payee-chevron { transform: rotate(180deg); }
+
+.payee-graph {
+  padding: 0 var(--sp-4) var(--sp-4);
+  animation: page-in 220ms ease both;
+}
+
+.payee-graph-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-block-end: var(--sp-2);
+}
+
+.community-demo-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-block-start: var(--sp-5);
+  font-size: 11px;
+  color: var(--text-hint);
+  line-height: 1.5;
+}
+.community-demo-note svg { flex-shrink: 0; margin-block-start: 2px; }

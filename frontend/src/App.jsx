@@ -19,6 +19,7 @@ import AnalyticsPage    from './pages/AnalyticsPage'
 import BeneficiariesPage from './pages/BeneficiariesPage'
 import SettingsPage     from './pages/SettingsPage'
 import RecommendationsPage from './pages/RecommendationsPage'
+import CommunityPage    from './pages/CommunityPage'
 
 // ----------------------------------------------------------------
 // LangSync — keeps <html> dir + lang in sync with account context
@@ -100,6 +101,7 @@ function AppRoutes() {
           <Route path="analytics"       element={<AnalyticsPage />} />
           <Route path="beneficiaries"   element={<BeneficiariesPage />} />
           <Route path="recommendations" element={<RecommendationsPage />} />
+          <Route path="community"       element={<CommunityPage />} />
           <Route path="settings"        element={<SettingsPage />} />
         </Route>
 

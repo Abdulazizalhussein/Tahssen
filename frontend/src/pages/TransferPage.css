@@ -994,3 +994,24 @@
   font-size: 13px;
   line-height: 1.5;
 }
+
+/* ── Report-to-community button (blocked result) ─────────────── */
+.transfer-report-community {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  width: 100%;
+  margin-block-end: var(--sp-3);
+  padding: 12px var(--sp-4);
+  border-radius: var(--radius);
+  background: var(--danger-dim);
+  border: 1px solid var(--danger-border);
+  color: var(--danger);
+  font-family: var(--font);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.transfer-report-community:hover { background: rgba(217, 48, 37, 0.22); }
