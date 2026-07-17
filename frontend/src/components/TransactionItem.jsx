@@ -2,17 +2,19 @@ import React from 'react'
 import { Shield, ArrowUpRight } from 'lucide-react'
 import { riskColorByScore } from '../theme'
 import { useAccount } from '../store/AccountContext'
+import RiyalSymbol from './RiyalSymbol'
 
 export default function TransactionItem({ tx }) {
-  const { formatMoney, t } = useAccount()
+  const { formatMoney, t, lang } = useAccount()
   const blocked = tx.blocked
   const iconColor = blocked ? 'var(--danger)' : 'var(--gold)'
   const riskC = riskColorByScore(tx.riskScore)
 
-  const date = new Date(tx.timestamp)
-  const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
-    date.getDate()
-  ).padStart(2, '0')}`
+  const dateStr = new Date(tx.timestamp).toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
 
   return (
     <div className="tx-item">
@@ -38,11 +40,11 @@ export default function TransactionItem({ tx }) {
           className="tx-item__amount"
           style={blocked ? { color: 'var(--text-hint)', textDecoration: 'line-through' } : undefined}
         >
-          {blocked ? '' : '-'}{formatMoney(tx.amount)}
+          {blocked ? '' : '-'}{formatMoney(tx.amount)} <RiyalSymbol size="0.75em" />
         </span>
         <span
           className="tx-item__risk-pill"
-          aria-label={`risk ${tx.riskScore}`}
+          aria-label={`${t('riskScore')} ${tx.riskScore}`}
           style={{ backgroundColor: `${riskC}1a` }}
         >
           <span

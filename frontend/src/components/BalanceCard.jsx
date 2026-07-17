@@ -1,5 +1,6 @@
 import React from 'react'
 import { useAccount } from '../store/AccountContext'
+import RiyalSymbol from './RiyalSymbol'
 
 export default function BalanceCard() {
   const { balance, monthlySpent, monthlyBudget, formatMoney, t, isRTL } = useAccount()
@@ -12,7 +13,7 @@ export default function BalanceCard() {
 
       <div className="balance-card__amount-row">
         <span className="balance-card__amount">{formatMoney(balance)}</span>
-        <span className="balance-card__currency">{t('currency')}</span>
+        <span className="balance-card__currency"><RiyalSymbol size="0.8em" /></span>
       </div>
 
       <div className="balance-card__account-row">

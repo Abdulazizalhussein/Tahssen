@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { useAccount } from '../store/AccountContext'
 import { SectionTitle } from '../components/ui'
+import RiyalSymbol from '../components/RiyalSymbol'
 import './SettingsPage.css'
 
 /* ── Expense category map ── */
@@ -199,7 +200,7 @@ export default function SettingsPage() {
             <div className="settings-income-display">
               {monthlyIncome > 0 ? (
                 <span className="settings-income-value text-gold">
-                  {formatMoney(monthlyIncome)} {t('currency')}
+                  {formatMoney(monthlyIncome)} <RiyalSymbol size="0.8em" />
                 </span>
               ) : (
                 <span className="text-hint text-sm">—</span>
@@ -218,7 +219,7 @@ export default function SettingsPage() {
           <div className="settings-fixed-total">
             <span className="text-muted text-sm">{t('totalFixedExpenses')}</span>
             <span className="text-gold font-bold text-sm">
-              {formatMoney(totalFixedExpenses)} {t('currency')}
+              {formatMoney(totalFixedExpenses)} <RiyalSymbol size="0.8em" />
             </span>
           </div>
         )}
@@ -242,7 +243,7 @@ export default function SettingsPage() {
                 </div>
                 <div className="settings-expense-right">
                   <span className="settings-expense-amount">
-                    {formatMoney(exp.amount)} {t('currency')}
+                    {formatMoney(exp.amount)} <RiyalSymbol size="0.8em" />
                   </span>
                   <button
                     className="settings-icon-btn"
@@ -371,7 +372,7 @@ export default function SettingsPage() {
         <div className="settings-acc-row">
           <span className="text-muted">{t('balance')}</span>
           <span className="text-gold font-bold">
-            {formatMoney(balance)} {t('currency')}
+            {formatMoney(balance)} <RiyalSymbol size="0.8em" />
           </span>
         </div>
         <button className="btn btn-danger btn-full" onClick={confirmReset}>

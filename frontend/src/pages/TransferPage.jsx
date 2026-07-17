@@ -21,6 +21,7 @@ import {
 import { useAccount } from '../store/AccountContext'
 import { ErrorBox, TypingDots } from '../components/ui'
 import RiskMeter from '../components/RiskMeter'
+import RiyalSymbol from '../components/RiyalSymbol'
 import { getNextQuestion } from '../agents/transferAgent'
 import { analyzeTransfer } from '../agents/fraudAgent'
 import './TransferPage.css'
@@ -528,7 +529,7 @@ export default function TransferPage() {
 
           {Number(amount) > balance && (
             <p className="transfer-warn-text" id="amount-warn" role="alert">
-              {t('balance')}: {formatMoney(balance)} {t('currency')}
+              {t('balance')}: {formatMoney(balance)} <RiyalSymbol size="0.8em" />
             </p>
           )}
 
@@ -689,7 +690,7 @@ function SummaryChip({ beneficiary, amount, formatMoney, t }) {
       <span className="transfer-summary-text">{beneficiary}</span>
       <span className="transfer-summary-divider" aria-hidden="true" />
       <span className="transfer-summary-amount">
-        {formatMoney(Number(amount))} {t('currency')}
+        {formatMoney(Number(amount))} <RiyalSymbol size="0.8em" />
       </span>
     </div>
   )
@@ -868,7 +869,7 @@ function ResultView({ blocked, balance, formatMoney, t, onDone, onAnother }) {
         <div className="transfer-result-balance">
           <span className="transfer-result-balance-label">{t('newBalance')}</span>
           <span className="transfer-result-balance-value">
-            {formatMoney(balance)} {t('currency')}
+            {formatMoney(balance)} <RiyalSymbol size="0.8em" />
           </span>
         </div>
       )}

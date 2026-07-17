@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Zap, Clock, ArrowUpRight, MessageCircle, BarChart2, Users, Inbox, Activity } from 'lucide-react'
+import { Zap, Clock, ArrowUpRight, MessageCircle, BarChart2, Users, Inbox, Activity, HandCoins, CalendarDays } from 'lucide-react'
 import { useAccount } from '../store/AccountContext'
 import BalanceCard from '../components/BalanceCard'
 import TransactionItem from '../components/TransactionItem'
@@ -31,12 +31,18 @@ export default function HomePage() {
   const [status, setStatus] = useState(null)
   const [loadingStatus, setLoadingStatus] = useState(false)
 
-  const today = new Date().toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-US', {
+  // Arabic leads with the Hijri (Umm al-Qura) date; the Gregorian date sits
+  // underneath. English leads with Gregorian and shows Hijri as the secondary.
+  const now = new Date()
+  const primaryLocale = lang === 'ar' ? 'ar-SA-u-ca-islamic-umalqura' : 'en-GB'
+  const altLocale = lang === 'ar' ? 'ar-SA-u-ca-gregory' : 'en-US-u-ca-islamic-umalqura'
+  const today = now.toLocaleDateString(primaryLocale, {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
   })
+  const altDate = now.toLocaleDateString(altLocale, { day: 'numeric', month: 'long', year: 'numeric' })
 
   const loadStatus = useCallback(async () => {
     setLoadingStatus(true)
@@ -66,6 +72,9 @@ export default function HomePage() {
             {userName ? `${t('greeting')}${lang === 'ar' ? '،' : ','} ${userName}` : t('appName')}
           </h1>
           <p className="home-date">{today}</p>
+          <p className="home-date home-date--alt">
+            <CalendarDays size={12} aria-hidden="true" /> {altDate}
+          </p>
         </div>
       </div>
 
@@ -94,6 +103,11 @@ export default function HomePage() {
           label={t('transfer')}
           primary
           onClick={() => navigate('/app/transfer')}
+        />
+        <QuickAction
+          icon={HandCoins}
+          label={t('zakat')}
+          onClick={() => navigate('/app/zakat')}
         />
         <QuickAction
           icon={Users}

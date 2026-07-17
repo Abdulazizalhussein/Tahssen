@@ -20,6 +20,7 @@ import { useAccount } from '../store/AccountContext'
 import { SectionTitle, ErrorBox } from '../components/ui'
 import { generateInsights, computeStats } from '../agents/chatAgent'
 import { riskColorByScore } from '../theme'
+import RiyalSymbol from '../components/RiyalSymbol'
 import './AnalyticsPage.css'
 
 const CATEGORIES = [
@@ -109,7 +110,7 @@ function BudgetBreakdown({ income, fixed, variable, formatMoney, t }) {
           <div className="analytics-budget-label-row">
             <span className="analytics-budget-label">{r.label}</span>
             <span className="analytics-budget-value" style={{ color: r.color }}>
-              {formatMoney(r.value)} {t('currency')}
+              {formatMoney(r.value)} <RiyalSymbol size="0.8em" />
             </span>
           </div>
           <div className="analytics-budget-track">
@@ -186,7 +187,7 @@ function OnboardingCard({
               <div className="analytics-exp-cat">{catLabel(e.category)}</div>
             </div>
             <span className="analytics-exp-amount">
-              {formatMoney(e.amount)} {t('currency')}
+              {formatMoney(e.amount)} <RiyalSymbol size="0.8em" />
             </span>
             <button
               className="analytics-trash-btn"
@@ -231,7 +232,7 @@ function ExpenseRow({ e, catLabel, formatMoney, onRemove, t, isRTL }) {
         <div className="analytics-exp-cat">{catLabel(e.category)}</div>
       </div>
       <span className="analytics-exp-amount">
-        {formatMoney(e.amount)} {t('currency')}
+        {formatMoney(e.amount)} <RiyalSymbol size="0.8em" />
       </span>
       <button
         className="analytics-trash-btn"
@@ -649,7 +650,7 @@ export default function AnalyticsPage() {
                   </p>
                   {typeof data.predictedMonthEndBalance === 'number' && (
                     <div className="analytics-predict-value">
-                      {formatMoney(data.predictedMonthEndBalance)} {t('currency')}
+                      {formatMoney(data.predictedMonthEndBalance)} <RiyalSymbol size="0.8em" />
                     </div>
                   )}
                 </div>
