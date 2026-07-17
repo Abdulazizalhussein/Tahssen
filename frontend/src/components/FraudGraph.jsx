@@ -115,17 +115,33 @@ export default function FraudGraph({ network }) {
 
       {/* Detail / legend */}
       {selNode ? (
-        <div className="fgraph-detail">
+        <div className={`fgraph-detail ${selNode.role}`}>
           <div className="fgraph-detail-row">
             <span className={`fgraph-role-chip ${selNode.role}`}>{t(`role_${selNode.role}`)}</span>
             <strong>{selNode.label}</strong>
           </div>
           <div className="fgraph-detail-meta">
             {selNode.amount > 0 && (
-              <span>{selNode.id === 'center' ? t('graphTotalIn') : t('graphAmount')}: <b>{formatMoney(selNode.amount)} <RiyalSymbol size="0.8em" /></b></span>
+              <span>
+                {selNode.id === 'center' ? t('graphTotalIn') : selNode.role === 'victim' ? t('graphTransferAmount') : t('graphAmount')}:{' '}
+                <b>{formatMoney(selNode.amount)} <RiyalSymbol size="0.8em" /></b>
+              </span>
             )}
             {selNode.city && <span>· {selNode.city}</span>}
+            {selNode.id === 'center' && selNode.reportCount > 0 && (
+              <span>· {selNode.reportCount} {t('reportsUnit')}</span>
+            )}
           </div>
+          {/* Victim → their complaint; mule/ring → what the account does */}
+          {selNode.role === 'victim' && selNode.reason && (
+            <p className="fgraph-detail-note complaint">“{lang === 'en' ? selNode.reason.en || selNode.reason.ar : selNode.reason.ar}”</p>
+          )}
+          {(selNode.role === 'mule' || selNode.role === 'ring') && (
+            <p className="fgraph-detail-note">
+              {selNode.note ? (lang === 'en' ? selNode.note.en || selNode.note.ar : selNode.note.ar) : t('muleExplain')}
+            </p>
+          )}
+          {selNode.role === 'ring' && <p className="fgraph-detail-note ring-hint">{t('ringExplain')}</p>}
         </div>
       ) : (
         <div className="fgraph-legend">

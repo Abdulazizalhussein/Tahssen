@@ -600,8 +600,8 @@ export default function AnalyticsPage() {
 
           {/* Spending trajectory + monthly trend charts */}
           <SectionTitle icon={TrendingUp}>{t('spendingCharts')}</SectionTitle>
-          <SpendingTrendChart series={dailySeries} t={t} isRTL={isRTL} formatMoney={formatMoney} />
-          <MonthlyBarsChart series={monthlySeries} t={t} lang={lang} isRTL={isRTL} formatMoney={formatMoney} />
+          <SpendingTrendChart series={dailySeries} t={t} isRTL={isRTL} />
+          <MonthlyBarsChart series={monthlySeries} t={t} lang={lang} isRTL={isRTL} />
           {categorySeries.total > 0 && (
             <CategoryDonut series={categorySeries} t={t} formatMoney={formatMoney} />
           )}

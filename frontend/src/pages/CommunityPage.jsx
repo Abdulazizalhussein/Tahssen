@@ -1,16 +1,15 @@
 import React, { useState, useCallback } from 'react'
 import { useLocation } from 'react-router-dom'
-import { ShieldCheck, Users, TriangleAlert, HandCoins, Plus, Network, ChevronDown, Info } from 'lucide-react'
+import { ShieldCheck, Users, TriangleAlert, CalendarClock, Plus, Network, ChevronDown, Info } from 'lucide-react'
 import { useAccount } from '../store/AccountContext'
 import { SectionTitle } from '../components/ui'
-import RiyalSymbol from '../components/RiyalSymbol'
 import FraudGraph from '../components/FraudGraph'
 import ReportFraudModal from '../components/ReportFraudModal'
-import { getNetworks, communityStats } from '../store/community'
+import { getNetworks, communityStats, networkReasons } from '../store/community'
 import './CommunityPage.css'
 
 export default function CommunityPage() {
-  const { t, formatMoney, lang } = useAccount()
+  const { t, lang } = useAccount()
   const location = useLocation()
   const [tick, setTick] = useState(0) // bump to re-read the registry after a report
   const [modal, setModal] = useState(false)
@@ -37,11 +36,11 @@ export default function CommunityPage() {
         </div>
       </div>
 
-      {/* Stats */}
+      {/* Stats — informational for the end user, no money figures */}
       <div className="community-stats">
         <Stat icon={TriangleAlert} color="var(--danger)" value={stats.reports} label={t('communityReportsStat')} />
-        <Stat icon={HandCoins} color="var(--gold)" value={<><span className="tnum">{formatMoney(stats.protectedAmount)}</span> <RiyalSymbol size="0.7em" /></>} label={t('communityProtectedStat')} />
-        <Stat icon={Users} color="var(--teal-light)" value={stats.victims} label={t('communityVictimsStat')} />
+        <Stat icon={CalendarClock} color="var(--teal-light)" value={stats.thisWeek} label={t('communityThisWeekStat')} />
+        <Stat icon={Users} color="var(--gold)" value={stats.victims} label={t('communityVictimsStat')} />
       </div>
 
       <button className="btn btn-danger btn-full community-report-btn" onClick={() => setModal(true)}>
@@ -60,7 +59,6 @@ export default function CommunityPage() {
               net={n}
               t={t}
               lang={lang}
-              formatMoney={formatMoney}
               open={expanded === n.id}
               onToggle={() => setExpanded(expanded === n.id ? null : n.id)}
             />
@@ -86,8 +84,7 @@ function Stat({ icon: Icon, color, value, label }) {
 }
 
 function PayeeCard({ net, t, lang, open, onToggle }) {
-  const r0 = net.reasons?.[0]
-  const lastReason = r0 ? (lang === 'en' ? r0.en || r0.ar : r0.ar) : ''
+  const lastReason = networkReasons(net, lang, 1)[0] || ''
   const when = net.daysAgo === 0 ? t('lastReportedToday') : t('lastReportedDays').replace('{n}', String(net.daysAgo))
   return (
     <div className={`payee-card${open ? ' open' : ''}`}>
@@ -101,6 +98,7 @@ function PayeeCard({ net, t, lang, open, onToggle }) {
           <div className="payee-meta">
             <span className="payee-cat">{t(`cat_${net.category}`)}</span>
             <span className="payee-when">· {when}</span>
+            <span className="payee-when">· {net.victims.length} {t('communityVictimsStat')}</span>
           </div>
           {lastReason && <p className="payee-reason">“{lastReason}”</p>}
         </div>
@@ -110,6 +108,7 @@ function PayeeCard({ net, t, lang, open, onToggle }) {
       {open && (
         <div className="payee-graph">
           <div className="payee-graph-label"><Network size={14} color="var(--gold)" /> {t('viewNetwork')}</div>
+          <p className="payee-graph-hint"><Info size={12} /> {t('graphTapHint')}</p>
           <FraudGraph network={net} />
         </div>
       )}

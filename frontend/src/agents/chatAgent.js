@@ -6,6 +6,7 @@
 
 import { apiChat } from '../api/client'
 import { computeForecast, computeHealth, computeStats } from '../lib/finance'
+import { appKnowledge } from '../lib/appGuide'
 
 // Re-export so AnalyticsPage's `import { computeStats } from '../agents/chatAgent'` keeps working.
 export { computeStats }
@@ -21,6 +22,7 @@ export async function chat(account, messages) {
     transactions: account.transactions,
     lang: account.lang,
     forecast: computeForecast(account), // month-end projection so advice matches the app
+    appGuide: appKnowledge(account.lang), // RAG: what the app can do, so the assistant guides accurately
   }
   // Send only user/assistant turns — the backend builds the system prompt from
   // accountData (server-authoritative), so no system role crosses the wire.

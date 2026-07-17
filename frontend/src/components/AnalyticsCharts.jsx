@@ -71,7 +71,7 @@ export function SpendingTrendChart({ series, t, isRTL }) {
 }
 
 /* ══════════ Monthly spending — which months rise & fall ══════════ */
-export function MonthlyBarsChart({ series, t, lang, isRTL, formatMoney }) {
+export function MonthlyBarsChart({ series, t, lang, isRTL }) {
   const { months, peak, avg } = series
   const W = 340, H = 184, padT = 22, padB = 26, padX = 10
   const plotW = W - padX * 2, plotH = H - padT - padB
@@ -93,20 +93,32 @@ export function MonthlyBarsChart({ series, t, lang, isRTL, formatMoney }) {
         <line x1={padX} y1={avgY} x2={W - padX} y2={avgY} className="chart-avg-line" />
         {ordered.map((m, i) => {
           const cx = padX + slot * i + slot / 2
-          const bh = Math.max(2, (m.total / peak) * plotH)
-          const y = H - padB - bh
-          const cls = `chart-bar${m.isPeak ? ' peak' : m.isCurrent ? ' current' : ''}`
+          const baseX = cx - barW / 2
+          const totalH = Math.max(2, (m.total / peak) * plotH)
+          const fixedH = Math.max(0, (m.fixed / peak) * plotH)
+          const varH = Math.max(0, totalH - fixedH)
+          const bottom = H - padB
           return (
-            <g key={i}>
-              <rect x={cx - barW / 2} y={y} width={barW} height={bh} rx="5" className={cls} style={{ transformOrigin: `center ${H - padB}px`, animationDelay: `${i * 70}ms` }} />
+            <g key={i} style={{ transformOrigin: `center ${bottom}px`, animationDelay: `${i * 70}ms` }} className="chart-bar-group">
+              {/* fixed base */}
+              <rect x={baseX} y={bottom - fixedH} width={barW} height={fixedH} className={`chart-bar fixed${m.isCurrent ? ' current' : ''}`} />
+              {/* variable top */}
+              {varH > 0.5 && (
+                <rect x={baseX} y={bottom - fixedH - varH} width={barW} height={varH} rx="4"
+                  className={`chart-bar variable${m.isPeak ? ' peak' : ''}${m.projected ? ' projected' : ''}`} />
+              )}
               {(m.isPeak || m.isCurrent) && (
-                <text x={cx} y={y - 5} className="chart-bar-value" textAnchor="middle">{compact(m.total)}</text>
+                <text x={cx} y={bottom - totalH - 5} className="chart-bar-value" textAnchor="middle">{compact(m.total)}</text>
               )}
               <text x={cx} y={H - 8} className={`chart-axis${m.isCurrent ? ' today' : ''}`} textAnchor="middle">{monthLabel(m)}</text>
             </g>
           )
         })}
       </svg>
+      <div className="chart-legend chart-legend-center">
+        <span><i className="sq teal" /> {t('fixed')}</span>
+        <span><i className="sq gold" /> {t('variableSpending')}</span>
+      </div>
     </div>
   )
 }

@@ -10,7 +10,6 @@ import {
   ChevronRight,
   ArrowLeft,
   ArrowRight,
-  DollarSign,
   Send,
   CheckCircle2,
   Shield,
@@ -25,7 +24,7 @@ import RiskMeter from '../components/RiskMeter'
 import RiyalSymbol from '../components/RiyalSymbol'
 import { getNextQuestion } from '../agents/transferAgent'
 import { analyzeTransfer } from '../agents/fraudAgent'
-import { lookupPayee } from '../store/community'
+import { lookupPayee, networkReasons } from '../store/community'
 import CommunityAlert from '../components/CommunityAlert'
 import ReportFraudModal from '../components/ReportFraudModal'
 import './TransferPage.css'
@@ -34,7 +33,7 @@ import './TransferPage.css'
 // stopped even before the AI conversation. More reports → stronger action.
 function communityAssessment(community, t, lang) {
   const net = community.network
-  const reasons = (net.reasons || []).slice(0, 2).map((r) => (lang === 'en' ? r.en || r.ar : r.ar))
+  const reasons = networkReasons(net, lang, 2)
   if (community.kind === 'direct') {
     const count = net.reportCount || 1
     const score = Math.min(100, 74 + count * 4) // 1 report → 78 (high), 2+ → block
@@ -572,7 +571,7 @@ export default function TransferPage() {
               {t('amount')} ({t('currency')})
             </label>
             <div className="transfer-field-wrap">
-              <DollarSign size={18} color="var(--text-muted)" aria-hidden="true" />
+              <RiyalSymbol size="20px" style={{ color: 'var(--text-muted)' }} />
               <input
                 id="transfer-amount"
                 type="number"

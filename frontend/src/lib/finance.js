@@ -191,33 +191,45 @@ export function dailySpendSeries(account, forecast) {
   return { actual, projected, budget, daysInMonth, today, maxY, projectedTotal: round(pc) }
 }
 
-// Gregorian seasonal spend multipliers (Ramadan/Eid/summer/back-to-school peaks).
-const SEASON = [0.95, 0.9, 1.15, 1.28, 1.02, 1.12, 1.22, 1.16, 1.06, 0.94, 1.0, 1.12]
-
 /**
- * Monthly spending over the last `count` months. The current month is the
- * projected total; prior months follow a deterministic Saudi seasonal pattern
- * scaled to the customer's own baseline — so the chart shows which months rise
- * and fall. Marks the peak month and returns the average.
+ * Monthly outflow over the last `count` months, derived from REAL inputs so it
+ * updates live and is never static:
+ *   month total = fixed commitments (recurring) + variable spend that month
+ *                 (from the actual non-blocked transactions)
+ * The current month also adds the projected remaining variable spend, and is
+ * split into a `fixed` base + `variable` top so the chart can stack them. When
+ * income/fixed/transactions change, every bar changes. Marks peak + average.
  */
 export function monthlySpendSeries(account, forecast, count = 6) {
   const now = new Date()
-  const baseline =
-    num(forecast?.projectedMonthlySpend) ||
-    num(account.monthlyBudget) ||
-    Math.max(0, num(account.monthlyIncome) - num(account.totalFixedExpenses)) * 0.6 ||
-    2000
+  const fixedMonthly = round(num(account.totalFixedExpenses))
+  const txns = Array.isArray(account.transactions) ? account.transactions : []
+
+  const variableByKey = {}
+  for (const t of txns) {
+    if (!t || t.blocked) continue
+    const d = new Date(t.timestamp)
+    const key = `${d.getFullYear()}-${d.getMonth()}`
+    variableByKey[key] = (variableByKey[key] || 0) + num(t.amount)
+  }
 
   const months = []
   for (let i = count - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    const mi = d.getMonth()
+    const key = `${d.getFullYear()}-${d.getMonth()}`
     const isCurrent = i === 0
-    const jitter = 0.92 + ((mi * 37) % 16) / 100 // deterministic 0.92..1.07
-    const total = isCurrent
-      ? (num(forecast?.projectedMonthlySpend) || round(baseline))
-      : Math.max(0, round(baseline * SEASON[mi] * jitter))
-    months.push({ year: d.getFullYear(), month: mi, total, isCurrent })
+    let variable = variableByKey[key] || 0
+    if (isCurrent) variable += num(forecast?.projectedRemainingSpend) // project the rest of this month
+    variable = round(variable)
+    months.push({
+      year: d.getFullYear(),
+      month: d.getMonth(),
+      fixed: fixedMonthly,
+      variable,
+      total: fixedMonthly + variable,
+      isCurrent,
+      projected: isCurrent && num(forecast?.projectedRemainingSpend) > 0,
+    })
   }
   const peak = Math.max(1, ...months.map((m) => m.total))
   months.forEach((m) => { m.isPeak = m.total === peak })

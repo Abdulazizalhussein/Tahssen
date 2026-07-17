@@ -1,5 +1,6 @@
 import React from 'react'
 import { ShieldAlert, Network, Users } from 'lucide-react'
+import { networkReasons } from '../store/community'
 import './CommunityAlert.css'
 
 /**
@@ -11,7 +12,7 @@ export default function CommunityAlert({ community, t, lang, onSeeNetwork }) {
   const direct = community.kind === 'direct'
   const net = community.network
   const count = net.reportCount || 1
-  const reasons = (net.reasons || []).slice(0, 2).map((r) => (lang === 'en' ? r.en || r.ar : r.ar))
+  const reasons = networkReasons(net, lang, 2)
 
   return (
     <div className={`calert ${direct ? 'direct' : 'linked'}`} role="alert">

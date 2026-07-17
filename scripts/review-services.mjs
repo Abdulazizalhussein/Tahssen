@@ -77,17 +77,41 @@ const svcBase = new URL('../service/agents/', import.meta.url)
   const c = await import(new URL('store/community.js', base))
   const st = c.communityStats()
   check('community', 'seed networks present', st.networks >= 3 && st.reports > 0)
+  check('community', 'end-user stats: no money figure, has weekly recency', !('protectedAmount' in st) && st.thisWeek >= 1)
   check('community', 'ring (shared mule) detected', c.sharedMules().size >= 1)
   check('community', 'direct lookup works', c.lookupPayee('خالد العتيبي').kind === 'direct')
   check('community', 'linked (mule) lookup works', c.lookupPayee('حساب وسيط ٧٤').kind === 'linked')
   check('community', 'unknown payee not flagged', c.lookupPayee('شخص عادي جدا').found === false)
+  const netK = c.lookupPayee('خالد العتيبي').network
+  check('community', 'network reasons derived from victims', c.networkReasons(netK, 'ar', 2).length === 2)
   c.reportFraud({ payee: 'محل الاختبار', category: 'marketplace', reason: 'اختبار', amount: 1000 })
   const r = c.lookupPayee('محل الاختبار')
   check('community', 'report → lookup finds it', r.found && r.network.reportCount === 1)
+  check('community', 'user report keeps complaint on victim', r.network.victims[0].reason?.ar === 'اختبار' && r.network.victims[0].amount === 1000)
   c.reportFraud({ payee: 'محل الاختبار', reason: 'اختبار 2', amount: 500 })
   check('community', 'repeat report increments count', c.lookupPayee('محل الاختبار').network.reportCount === 2)
-  const g = c.buildGraph(c.lookupPayee('خالد العتيبي').network)
+  const g = c.buildGraph(netK)
   check('community', 'graph has center + victims + mules', g.nodes[0].role === 'scammer' && g.nodes.length > 3 && g.hasRing)
+  const gVictim = g.nodes.find((n) => n.role === 'victim')
+  check('community', 'graph victim carries complaint + amount', !!gVictim?.reason && gVictim.amount > 0)
+  const gRing = g.nodes.find((n) => n.role === 'ring')
+  check('community', 'graph ring node carries explanation note', !!gRing?.note)
+}
+
+// ── 2b. In-app assistant app-guide (RAG + intent router) ────────────
+{
+  const a = await import(new URL('lib/appGuide.js', base))
+  check('appGuide', 'transfer intent detected (ar)', a.detectIntent('ابي احول فلوس لشخص', 'ar')?.service.id === 'transfer')
+  check('appGuide', 'community intent detected (en)', a.detectIntent('I want to report a scam', 'en')?.service.id === 'community')
+  check('appGuide', 'recommendations intent detected (ar)', a.detectIntent('كيف اوفر من راتبي', 'ar')?.service.id === 'recommendations')
+  check('appGuide', 'greeting → no intent (avoids false action)', a.detectIntent('مرحبا كيف حالك', 'ar') === null)
+  // Informational questions must be ANSWERED by RAG, never hijacked into a nav card.
+  check('appGuide', 'ar question not hijacked', a.detectIntent('ما وضع ميزانيتي هذا الشهر؟', 'ar') === null)
+  check('appGuide', 'en question not hijacked (budget/transfer nouns)',
+    a.detectIntent('How is my budget this month?', 'en') === null && a.detectIntent('how much did I transfer last month', 'en') === null)
+  check('appGuide', 'cue+noun request fires', a.detectIntent('افتح الاعدادات', 'ar')?.service.id === 'settings')
+  check('appGuide', 'getService resolves route', a.getService('analytics')?.route === '/app/analytics')
+  check('appGuide', 'RAG knowledge lists services (ar+en)', a.appKnowledge('ar').includes('/app/community') && a.appKnowledge('en').length > 50)
 }
 
 // ── 3. AI agents (short-circuits + graceful fallback) ───────────────

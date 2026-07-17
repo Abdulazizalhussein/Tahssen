@@ -130,3 +130,27 @@
   font-size: 12.5px;
   color: var(--text-muted);
 }
+
+.fgraph-detail-note {
+  margin-block-start: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card-light);
+  border-inline-start: 3px solid var(--border);
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+.fgraph-detail-note.complaint {
+  border-inline-start-color: var(--teal-light);
+  color: var(--text);
+  font-style: italic;
+}
+.fgraph-detail-note.ring-hint {
+  border-inline-start-color: var(--gold);
+  background: var(--gold-dim);
+  color: var(--text);
+}
+/* mule/ring plain note */
+.fgraph-detail.mule .fgraph-detail-note:not(.ring-hint) { border-inline-start-color: var(--warning); }
+.fgraph-detail.ring .fgraph-detail-note:not(.ring-hint) { border-inline-start-color: var(--gold); }

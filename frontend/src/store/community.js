@@ -33,6 +33,11 @@ const normIban = (s) => (s || '').toString().replace(/\s+/g, '').toUpperCase()
 // A shared mule name that appears across networks reveals a ring.
 const RING_MULE = 'حساب وسيط ٧٤'
 
+// Money-mule note: mules receive money from victims and immediately move it on
+// (out to another account or abroad) — the laundering hop.
+const MULE_NOTE = { ar: 'حساب وسيط يستلم الأموال ويحوّلها فوراً للخارج', en: 'A relay account that receives money and forwards it out immediately' }
+const RING_NOTE = { ar: 'حساب وسيط ظهر في أكثر من عملية احتيال — دليل على شبكة منظّمة', en: 'A relay account seen across multiple scams — evidence of an organized ring' }
+
 const SEED = [
   {
     id: 'seed_invest',
@@ -42,20 +47,16 @@ const SEED = [
     city: 'الرياض',
     daysAgo: 4,
     reportCount: 9,
-    reasons: [
-      { ar: 'وعدني بأرباح مضمونة في التداول ثم اختفى', en: 'Promised guaranteed trading profits then vanished' },
-      { ar: 'طلب رسوماً إضافية لسحب الأرباح', en: 'Asked for extra fees to withdraw the profits' },
-    ],
     victims: [
-      { name: 'ع. الشهري', amount: 12000, city: 'الرياض' },
-      { name: 'م. القحطاني', amount: 8000, city: 'جدة' },
-      { name: 'س. الدوسري', amount: 25000, city: 'الدمام' },
-      { name: 'ف. الحربي', amount: 5000, city: 'الرياض' },
-      { name: 'ن. الغامدي', amount: 15000, city: 'مكة' },
+      { name: 'ع. الشهري', amount: 12000, city: 'الرياض', reason: { ar: 'وعدني بمضاعفة المبلغ خلال أسبوع ثم اختفى', en: 'Promised to double my money in a week, then vanished' } },
+      { name: 'م. القحطاني', amount: 8000, city: 'جدة', reason: { ar: 'طلب رسوماً إضافية لسحب أرباحي ولم أستلم شيئاً', en: 'Demanded extra fees to release my profits — I got nothing' } },
+      { name: 'س. الدوسري', amount: 25000, city: 'الدمام', reason: { ar: 'أقنعني بمنصة تداول وهمية وحوّلت مبلغاً كبيراً', en: 'Talked me into a fake trading platform; I sent a large amount' } },
+      { name: 'ف. الحربي', amount: 5000, city: 'الرياض', reason: { ar: 'عرض أرباحاً يومية مضمونة ثم حظرني', en: 'Offered guaranteed daily returns, then blocked me' } },
+      { name: 'ن. الغامدي', amount: 15000, city: 'مكة', reason: { ar: 'تظاهر بأنه مستشار استثمار معتمد', en: 'Pretended to be a licensed investment advisor' } },
     ],
     mules: [
-      { name: RING_MULE, amount: 40000 },
-      { name: 'محفظة رقمية خارجية', amount: 25000 },
+      { name: RING_MULE, amount: 40000, note: RING_NOTE },
+      { name: 'محفظة رقمية خارجية', amount: 25000, note: MULE_NOTE },
     ],
   },
   {
@@ -66,18 +67,14 @@ const SEED = [
     city: 'جدة',
     daysAgo: 9,
     reportCount: 6,
-    reasons: [
-      { ar: 'استلم قيمة الطلب ولم يشحن المنتج', en: 'Took the payment and never shipped the order' },
-      { ar: 'حظرني مباشرة بعد الدفع', en: 'Blocked me right after payment' },
-    ],
     victims: [
-      { name: 'ر. الزهراني', amount: 1800, city: 'جدة' },
-      { name: 'ت. المطيري', amount: 3200, city: 'الرياض' },
-      { name: 'ل. العمري', amount: 950, city: 'أبها' },
-      { name: 'ك. السبيعي', amount: 4500, city: 'جدة' },
+      { name: 'ر. الزهراني', amount: 1800, city: 'جدة', reason: { ar: 'دفعت ثمن جوال ولم يصلني وحظرني بعد الدفع', en: 'Paid for a phone, never arrived, blocked after payment' } },
+      { name: 'ت. المطيري', amount: 3200, city: 'الرياض', reason: { ar: 'استلم قيمة الطلب ولم يشحن المنتج', en: 'Took the order amount and never shipped' } },
+      { name: 'ل. العمري', amount: 950, city: 'أبها', reason: { ar: 'أرسل رقم تتبع وهمي', en: 'Sent a fake tracking number' } },
+      { name: 'ك. السبيعي', amount: 4500, city: 'جدة', reason: { ar: 'طلب المبلغ كاملاً مقدماً ثم اختفى', en: 'Asked for full payment upfront, then disappeared' } },
     ],
-    // Shares the RING_MULE with the investment scam → same laundering ring.
-    mules: [{ name: RING_MULE, amount: 9000 }],
+    // Shares RING_MULE with the investment scam → same laundering ring.
+    mules: [{ name: RING_MULE, amount: 9000, note: RING_NOTE }],
   },
   {
     id: 'seed_impersonation',
@@ -87,14 +84,11 @@ const SEED = [
     city: 'الدمام',
     daysAgo: 2,
     reportCount: 4,
-    reasons: [
-      { ar: 'انتحل صفة موظف بنك وطلب تحويلاً للتحقق', en: 'Posed as a bank officer and asked for a "verification" transfer' },
-    ],
     victims: [
-      { name: 'ح. البلوي', amount: 9000, city: 'تبوك' },
-      { name: 'و. الأنصاري', amount: 13000, city: 'الدمام' },
+      { name: 'ح. البلوي', amount: 9000, city: 'تبوك', reason: { ar: 'انتحل صفة موظف بنك وطلب تحويلاً «للتحقق»', en: 'Posed as a bank officer and asked for a "verification" transfer' } },
+      { name: 'و. الأنصاري', amount: 13000, city: 'الدمام', reason: { ar: 'أرسل رابطاً وطلب تحويل الرصيد لحماية الحساب', en: 'Sent a link and asked me to move my balance to "protect" it' } },
     ],
-    mules: [{ name: 'سحب صرّاف فوري', amount: 20000 }],
+    mules: [{ name: 'سحب صرّاف فوري', amount: 20000, note: { ar: 'يُسحب فوراً عبر الصرّاف الآلي فور وصول المبلغ', en: 'Withdrawn at an ATM the moment the money lands' } }],
   },
 ]
 
@@ -134,9 +128,9 @@ export function sharedMules(networks = getNetworks()) {
 export function communityStats() {
   const nets = getNetworks()
   const reports = nets.reduce((s, n) => s + (n.reportCount || 1), 0)
-  const protectedAmount = nets.reduce((s, n) => s + totalIn(n), 0)
   const victims = nets.reduce((s, n) => s + n.victims.length, 0)
-  return { networks: nets.length, reports, protectedAmount, victims }
+  const thisWeek = nets.filter((n) => (n.daysAgo ?? 99) <= 7).length
+  return { networks: nets.length, reports, victims, thisWeek }
 }
 
 /**
@@ -168,12 +162,12 @@ export function reportFraud({ payee, iban, category = 'other', reason = '', amou
   const list = loadUser()
   const nn = normName(payee)
   const existing = list.find((n) => normName(n.payee) === nn)
-  const reasonObj = { ar: reason, en: reason }
+  const reasonObj = reason ? { ar: reason, en: reason } : null
+  const victim = { name: reporterName, amount, city: '', reason: reasonObj }
 
   if (existing) {
     existing.reportCount = (existing.reportCount || 1) + 1
-    if (reason) existing.reasons = [reasonObj, ...(existing.reasons || [])].slice(0, 5)
-    if (amount > 0) existing.victims = [{ name: reporterName, amount, city: '' }, ...existing.victims].slice(0, 12)
+    existing.victims = [victim, ...existing.victims].slice(0, 12)
     existing.daysAgo = 0
     saveUser(list)
     return existing
@@ -188,33 +182,42 @@ export function reportFraud({ payee, iban, category = 'other', reason = '', amou
     daysAgo: 0,
     reportCount: 1,
     userReported: true,
-    reasons: reason ? [reasonObj] : [],
-    victims: amount > 0 ? [{ name: reporterName, amount, city: '' }] : [{ name: reporterName, amount: 0, city: '' }],
+    victims: [victim],
     mules: [],
   }
   saveUser([created, ...list])
   return created
 }
 
-/** Build the nodes + edges for the money-flow graph of one network. */
+/** Build the nodes + edges for the money-flow graph of one network. Each victim
+ *  node carries its complaint + amount; each mule node carries a behavior note. */
 export function buildGraph(network) {
   const ring = sharedMules()
   const nodes = [
-    { id: 'center', label: network.payee, role: 'scammer', amount: totalIn(network), reportCount: network.reportCount },
+    { id: 'center', label: network.payee, role: 'scammer', amount: totalIn(network), reportCount: network.reportCount, category: network.category },
   ]
   const edges = []
   network.victims.forEach((v, i) => {
     const id = `v${i}`
-    nodes.push({ id, label: v.name, role: 'victim', amount: v.amount, city: v.city, side: 'in' })
+    nodes.push({ id, label: v.name, role: 'victim', amount: v.amount, city: v.city, reason: v.reason, side: 'in' })
     edges.push({ from: id, to: 'center', amount: v.amount, dir: 'in' })
   })
   ;(network.mules || []).forEach((m, i) => {
     const id = `m${i}`
     const isRing = ring.has(normName(m.name))
-    nodes.push({ id, label: m.name, role: isRing ? 'ring' : 'mule', amount: m.amount, side: 'out' })
+    nodes.push({ id, label: m.name, role: isRing ? 'ring' : 'mule', amount: m.amount, note: m.note, side: 'out' })
     edges.push({ from: 'center', to: id, amount: m.amount, dir: 'out', ring: isRing })
   })
   return { nodes, edges, hasRing: (network.mules || []).some((m) => ring.has(normName(m.name))) }
+}
+
+/** Top complaints for a network (from its victims), for the card summary. */
+export function networkReasons(network, lang = 'ar', limit = 2) {
+  return (network.victims || [])
+    .map((v) => v.reason)
+    .filter(Boolean)
+    .slice(0, limit)
+    .map((r) => (lang === 'en' ? r.en || r.ar : r.ar))
 }
 
 export const CATEGORIES = ['investment', 'marketplace', 'impersonation', 'phishing', 'romance', 'job', 'other']

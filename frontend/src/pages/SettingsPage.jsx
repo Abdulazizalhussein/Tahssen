@@ -10,7 +10,7 @@ import {
   Plus,
   Trash2,
   Check,
-  DollarSign,
+  Wallet,
   X,
   Edit2,
 } from 'lucide-react'
@@ -171,7 +171,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Financial Profile */}
-      <SectionTitle icon={DollarSign}>{t('financialProfile')}</SectionTitle>
+      <SectionTitle icon={Wallet}>{t('financialProfile')}</SectionTitle>
       <div className="card">
         <p className="settings-profile-desc">{t('financialProfileDesc')}</p>
 
