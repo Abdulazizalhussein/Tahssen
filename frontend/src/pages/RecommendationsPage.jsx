@@ -62,7 +62,16 @@ export default function RecommendationsPage() {
             <div className="recs-forecast-amount">
               {formatMoney(forecast.predictedMonthEndBalance)} <RiyalSymbol size="0.5em" />
             </div>
-            <span className="recs-forecast-sub">{t('forecastSubtitle')}</span>
+            {forecast.balance > 0 && (
+              <span className="recs-forecast-delta">
+                {t('forecastFromBalance').replace('{n}', formatMoney(forecast.balance))}
+              </span>
+            )}
+            <span className="recs-forecast-sub">
+              {forecast.projectedRemainingSpend > 0
+                ? t('forecastSpendNote').replace('{n}', formatMoney(forecast.projectedRemainingSpend))
+                : t('forecastSubtitle')}
+            </span>
           </div>
           {forecast.potentialSavings > 0 && (
             <div className="recs-savings">

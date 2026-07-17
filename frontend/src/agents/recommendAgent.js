@@ -1,46 +1,98 @@
 // ─────────────────────────────────────────────────────────────────
 //  Tahseen Smart Recommendations agent.
 //
-//  Always returns a deterministic month-end forecast + a set of
-//  quantified, personalized recommendations computed from the real
-//  account data — so the feature is instant, offline-safe, and never
-//  empty. When the backend AI is configured it enriches/overrides the
-//  recommendation list; the forecast stays deterministic.
+//  Everything derives from ONE projection model (computeForecast) so the
+//  numbers are internally consistent: the projected month-end balance, the
+//  savings headroom, and every recommendation's SAR impact all come from the
+//  same forecast. It is instant and offline-safe (deterministic), and the
+//  backend AI enriches the recommendation list when configured.
 // ─────────────────────────────────────────────────────────────────
 
 import { apiRecommend } from '../api/client'
 
 const CATEGORIES = new Set(['save', 'protect', 'plan', 'spend', 'grow'])
 const PRIORITIES = new Set(['high', 'medium', 'low'])
-const round = (n) => Math.round(Number(n) || 0)
+const num = (v) => {
+  const n = Number(v)
+  return Number.isFinite(n) ? n : 0
+}
+const round = (n) => Math.round(num(n))
 
-/** Deterministic month-end cashflow forecast + savings headroom. */
+/**
+ * The financial projection model. Every figure below is derived, and they
+ * depend on each other:
+ *
+ *   dailyBurn              = observed spend/day  (or the budgeted pace if no
+ *                            spend yet this month)
+ *   projectedRemainingSpend= dailyBurn × days left in the month
+ *   projectedMonthlySpend  = spent so far + projected remaining
+ *   fixedDueRemaining      = fixed commitments still expected before month-end
+ *   predictedMonthEnd      = balance − projectedRemainingSpend − fixedDueRemaining
+ *   potentialSavings       = budget (or discretionary) − projectedMonthlySpend
+ *   savingsRate            = (income − fixed − projectedMonthlySpend) / income
+ */
 export function computeForecast(account) {
-  const { balance = 0, monthlyIncome = 0, totalFixedExpenses = 0, monthlySpent = 0, monthlyBudget = 0 } = account
-  const day = new Date().getDate()
-  const daysLeft = Math.max(0, 30 - day)
-  const dailyRate = day > 0 ? monthlySpent / day : 0
-  const predictedMonthEndBalance = Math.max(0, round(balance - dailyRate * daysLeft))
-  const discretionary = monthlyIncome - totalFixedExpenses
-  const remaining = discretionary - monthlySpent
-  const potentialSavings = round(
-    monthlyIncome > 0 ? Math.max(0, Math.min(remaining, monthlyIncome * 0.2)) : Math.max(0, monthlyBudget - monthlySpent)
-  )
-  return { predictedMonthEndBalance, potentialSavings, remaining, discretionary, daysLeft }
+  const balance = num(account.balance)
+  const income = num(account.monthlyIncome)
+  const fixed = num(account.totalFixedExpenses)
+  const spent = num(account.monthlySpent)
+  const budget = num(account.monthlyBudget)
+
+  const now = new Date()
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+  const dayOfMonth = now.getDate()
+  const daysElapsed = Math.max(1, dayOfMonth)
+  const daysLeft = Math.max(0, daysInMonth - dayOfMonth)
+
+  // Room to spend after fixed commitments (fall back to the stated budget).
+  const discretionary = income > 0 ? Math.max(0, income - fixed) : budget
+
+  // Expected variable spending per day: extrapolate real spend when we have
+  // it, otherwise assume the customer spends at their planned budget pace, so
+  // the forecast is never a flat copy of today's balance.
+  const budgetedPace = (budget > 0 ? budget : discretionary * 0.6) / daysInMonth
+  const dailyBurn = spent > 0 ? spent / daysElapsed : budgetedPace
+
+  const projectedRemainingSpend = round(dailyBurn * daysLeft)
+  const projectedMonthlySpend = round(spent + projectedRemainingSpend)
+
+  // Fixed bills still expected before month-end (spread evenly across the month).
+  const fixedDueRemaining = round(fixed * (daysLeft / daysInMonth))
+
+  // Month-end balance = what's left after the spending we still expect.
+  const predictedMonthEndBalance = Math.max(0, round(balance - projectedRemainingSpend - fixedDueRemaining))
+
+  // What could still be saved = the unspent part of the month's budget.
+  const savableBase = budget > 0 ? budget : discretionary
+  const potentialSavings = round(Math.max(0, savableBase - projectedMonthlySpend))
+
+  const savingsRate = income > 0 ? Math.max(0, (income - fixed - projectedMonthlySpend) / income) : 0
+  const overspending = projectedMonthlySpend > savableBase && savableBase > 0
+
+  return {
+    balance,
+    income,
+    fixed,
+    daysLeft,
+    daysInMonth,
+    discretionary,
+    dailyBurn: round(dailyBurn),
+    projectedRemainingSpend,
+    projectedMonthlySpend,
+    fixedDueRemaining,
+    predictedMonthEndBalance,
+    potentialSavings,
+    savingsRate: Math.round(savingsRate * 100) / 100,
+    overspending,
+  }
 }
 
-/** Deterministic, bilingual recommendations grounded in the numbers. */
-export function localRecommendations(account) {
+/** Deterministic, bilingual recommendations — all impacts come from `f`. */
+export function localRecommendations(account, f) {
   const en = (account.lang || 'ar') === 'en'
-  const { balance = 0, monthlyIncome = 0, totalFixedExpenses = 0, monthlySpent = 0, monthlyBudget = 0, transactions = [] } = account
+  const { balance = 0, monthlyIncome = 0, transactions = [] } = account
   const blocked = transactions.filter((t) => t.blocked)
-  const blockedAmount = round(blocked.reduce((s, t) => s + (t.amount || 0), 0))
-  const discretionary = monthlyIncome - totalFixedExpenses
-  const remaining = discretionary - monthlySpent
-  const savingsTarget = round(monthlyIncome * 0.1)
-  const spendRatio = monthlyBudget > 0 ? monthlySpent / monthlyBudget : 0
-  const fixedShare = monthlyIncome > 0 ? totalFixedExpenses / monthlyIncome : 0
-
+  const blockedAmount = round(blocked.reduce((s, t) => s + num(t.amount), 0))
   const recs = []
 
   if (blockedAmount > 0) {
@@ -58,51 +110,45 @@ export function localRecommendations(account) {
       id: 'setup_income', category: 'plan', priority: 'high', impact: 0,
       title: en ? 'Add your monthly income' : 'أضف مدخولك الشهري',
       detail: en
-        ? 'Set your income in Settings to unlock accurate budgeting and sharper recommendations.'
-        : 'حدّد مدخولك في الإعدادات لتفعيل ميزانية دقيقة وتوصيات أوضح.',
+        ? 'Set your income in Settings to unlock accurate forecasting and sharper recommendations.'
+        : 'حدّد مدخولك في الإعدادات لتفعيل توقّعات دقيقة وتوصيات أوضح.',
     })
   }
 
-  if (monthlyIncome > 0 && remaining < 0) {
+  if (f.overspending) {
+    const over = round(f.projectedMonthlySpend - (f.income > 0 ? f.discretionary : f.projectedMonthlySpend))
     recs.push({
-      id: 'deficit', category: 'plan', priority: 'high', impact: Math.abs(round(remaining)),
-      title: en ? 'You may run short before payday' : 'قد ينقصك المال قبل الراتب',
+      id: 'pace', category: 'spend', priority: 'high', impact: f.projectedRemainingSpend,
+      title: en ? `At this pace you'll overspend this month` : 'بوتيرتك الحالية ستتجاوز ميزانيتك',
       detail: en
-        ? 'Your spending has passed your discretionary budget. Trim non-essentials to close the gap.'
-        : 'تجاوز إنفاقك ميزانيتك المتاحة. قلّل المصاريف غير الضرورية لتغطية الفارق.',
-    })
-  } else if (spendRatio > 0.85) {
-    recs.push({
-      id: 'high_spend', category: 'spend', priority: 'medium', impact: round(Math.max(0, monthlySpent - monthlyBudget * 0.85)),
-      title: en ? `You've used ${Math.round(spendRatio * 100)}% of your budget` : `أنفقت ${Math.round(spendRatio * 100)}% من ميزانيتك`,
-      detail: en
-        ? 'Ease off discretionary spending for the rest of the month to stay comfortably within budget.'
-        : 'خفّف الإنفاق الاختياري لبقية الشهر لتبقى ضمن ميزانيتك بأريحية.',
+        ? `You're on track to spend ${f.projectedMonthlySpend.toLocaleString('en-US')} SAR. Slow the daily pace to stay on budget.`
+        : `أنت متّجه لإنفاق ${f.projectedMonthlySpend.toLocaleString('ar-SA')} ر.س هذا الشهر. خفّف الإنفاق اليومي لتبقى ضمن ميزانيتك.`,
     })
   }
 
-  if (monthlyIncome > 0 && savingsTarget > 0 && remaining >= savingsTarget) {
+  if (f.potentialSavings > 0) {
     recs.push({
-      id: 'save', category: 'save', priority: 'medium', impact: savingsTarget,
-      title: en ? `Set aside ${savingsTarget.toLocaleString('en-US')} this month` : `ادّخر ${savingsTarget.toLocaleString('ar-SA')} هذا الشهر`,
+      id: 'save', category: 'save', priority: 'medium', impact: f.potentialSavings,
+      title: en ? `You can save ${f.potentialSavings.toLocaleString('en-US')} this month` : `يمكنك ادّخار ${f.potentialSavings.toLocaleString('ar-SA')} هذا الشهر`,
       detail: en
-        ? 'You have room to save 10% of your income. Move it out early before it gets spent.'
-        : 'لديك متّسع لادّخار 10% من دخلك. حوّله مبكراً قبل أن يُنفق.',
+        ? 'This is the unspent part of your budget at your current pace. Move it aside early before it gets spent.'
+        : 'هذا هو المتبقّي من ميزانيتك بوتيرة إنفاقك الحالية. حوّله مبكراً قبل أن يُنفق.',
     })
   }
 
-  if (fixedShare > 0.5) {
+  // Forecast-driven caution when the month-end balance drops sharply.
+  if (f.predictedMonthEndBalance > 0 && f.balance > 0 && f.predictedMonthEndBalance < f.balance * 0.55) {
     recs.push({
-      id: 'fixed_heavy', category: 'plan', priority: 'low', impact: round(totalFixedExpenses),
-      title: en ? 'Your fixed commitments are heavy' : 'التزاماتك الثابتة مرتفعة',
+      id: 'forecast_drop', category: 'plan', priority: 'medium', impact: round(f.balance - f.predictedMonthEndBalance),
+      title: en ? `Your balance is set to fall to ${f.predictedMonthEndBalance.toLocaleString('en-US')}` : `رصيدك متوقّع أن ينخفض إلى ${f.predictedMonthEndBalance.toLocaleString('ar-SA')}`,
       detail: en
-        ? `Fixed expenses are ${Math.round(fixedShare * 100)}% of income. Review subscriptions you no longer use.`
-        : `مصاريفك الثابتة ${Math.round(fixedShare * 100)}% من دخلك. راجع الاشتراكات التي لم تعد تستخدمها.`,
+        ? 'Based on your spending pace and upcoming commitments. Trim non-essentials to protect your buffer.'
+        : 'بناءً على وتيرة إنفاقك والتزاماتك القادمة. قلّل المصاريف غير الضرورية للحفاظ على احتياطك.',
     })
   }
 
-  // Emergency-fund buffer target — a concrete "grow" goal for healthy accounts.
-  if (monthlyIncome > 0 && remaining >= 0) {
+  // Emergency-fund buffer target — a concrete "grow" goal.
+  if (monthlyIncome > 0 && !f.overspending) {
     const bufferTarget = round(monthlyIncome * 3)
     if (balance < bufferTarget) {
       recs.push({
@@ -115,7 +161,6 @@ export function localRecommendations(account) {
     }
   }
 
-  // Protection reassurance — on-brand, always useful when nothing was blocked.
   if (blockedAmount === 0) {
     recs.push({
       id: 'protection_on', category: 'protect', priority: 'low', impact: 0,
@@ -157,11 +202,11 @@ function normalize(list) {
 export async function getRecommendations(account) {
   const forecast = computeForecast(account)
   try {
-    const data = await apiRecommend(account)
+    const data = await apiRecommend(account, forecast)
     const recs = normalize(data?.recommendations)
     if (recs.length) return { forecast, recommendations: recs, source: 'ai' }
   } catch {
     /* fall back to the local heuristic below */
   }
-  return { forecast, recommendations: localRecommendations(account), source: 'local' }
+  return { forecast, recommendations: localRecommendations(account, forecast), source: 'local' }
 }

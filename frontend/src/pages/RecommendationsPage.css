@@ -268,3 +268,9 @@
   color: var(--text-hint);
   font-size: 11px;
 }
+
+.recs-forecast-delta {
+  font-size: 12px;
+  color: var(--text-hint);
+  font-variant-numeric: tabular-nums;
+}

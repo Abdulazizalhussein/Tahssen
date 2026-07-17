@@ -34,7 +34,8 @@ Runs across the client (`src/agents/transferAgent.js` + `fraudAgent.js`) and the
 - `interrogate()` → `{ done, question? , skipRisk?, isPersonallyKnown?, hasGuarantee?, forceHighRisk?, riskScore?, reason? }`
 - `analyze()` → `{ riskScore:0-100, riskLevel:'low|medium|high|critical', recommendation:'allow|warn|block', reasoning:string, redFlags:string[], predictions:string[] }` (always run through `clampResult`)
 - `chat()` → a plain string reply. Grounded in `accountData` (balance, income, fixed expenses, recent transactions); it advises only, never executes transfers.
-- `recommend({accountData})` → `{ recommendations: [{title, detail, category, impact, priority}] }` — personalized, quantified financial tips grounded in the real figures. Powers the Smart Recommendations page (`/app/recommendations`, Home quick action). The client agent (`frontend/src/agents/recommendAgent.js`) computes a deterministic month-end forecast + a bilingual heuristic recommendation set, so the feature is instant and works with no API key; the backend AI enriches the list when configured. `category` ∈ save|protect|plan|spend|grow, `impact` in SAR.
+- `recommend({accountData})` → `{ recommendations: [{title, detail, category, impact, priority}] }` — personalized, quantified financial tips grounded in the real figures. Powers the Smart Recommendations page (`/app/recommendations`, Home quick action). `category` ∈ save|protect|plan|spend|grow, `impact` in SAR.
+- **One projection model drives everything numeric.** `computeForecast(account)` in `frontend/src/agents/recommendAgent.js` derives the whole set from each other: `dailyBurn` (observed spend/day, or the budgeted pace when there's no spend yet — so the forecast is never a flat copy of the balance) → `projectedRemainingSpend` → `predictedMonthEndBalance = balance − projectedRemainingSpend − fixedDueRemaining`, plus `potentialSavings` and `savingsRate`. The forecast is passed to the recommend AND chat prompts so the AI reasons over the SAME numbers shown in the UI. The local heuristic recommendations reuse these figures too — keep them consistent; don't reintroduce a `dailyRate = spent/day` that goes to zero for fresh accounts.
 
 ## Invariants / conventions
 
@@ -57,6 +58,6 @@ Runs across the client (`src/agents/transferAgent.js` + `fraudAgent.js`) and the
 
 - `vercel.json`: build `npm run build`, output `frontend/dist`; `/api/(.*)` rewrites to the `api/index.mjs` serverless function (Express), everything else to `index.html` (SPA).
 - Env vars (Vercel Project → Settings → Environment Variables):
-  - `OPENAI_API_KEY` (required for live AI) · `OPENAI_MODEL` (default `gpt-4o-mini`) · `OPENAI_TIMEOUT_MS` (default 15000)
+  - `OPENAI_API_KEY` (required for live AI) · `OPENAI_MODEL` (default `gpt-5.4-mini`, override here if unavailable on the account) · `OPENAI_TIMEOUT_MS` (default 15000)
   - `CORS_ORIGINS` — comma-separated allowlist (unset = allow all, fine for same-origin prod)
   - `RATE_LIMIT_MAX` (default 30) / `RATE_LIMIT_WINDOW_MS` (default 60000) — per-IP cap on `/api/*`

@@ -59,7 +59,7 @@ export async function apiChat(messages, accountData) {
   return d.reply
 }
 
-export async function apiRecommend(account) {
+export async function apiRecommend(account, forecast) {
   const accountData = {
     balance: account.balance,
     monthlyIncome: account.monthlyIncome,
@@ -69,6 +69,7 @@ export async function apiRecommend(account) {
     fixedExpenses: account.fixedExpenses,
     transactions: account.transactions,
     lang: account.lang,
+    forecast, // the deterministic projection so the AI reasons over consistent numbers
   }
   return post('/api/ai/recommend', { accountData })
 }

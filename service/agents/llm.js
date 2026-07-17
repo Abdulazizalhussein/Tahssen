@@ -1,6 +1,7 @@
 import OpenAI from 'openai'
 
-export const MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini'
+// Default model for all agents. Override per-deployment with OPENAI_MODEL.
+export const MODEL = process.env.OPENAI_MODEL || 'gpt-5.4-mini'
 
 export class AiNotConfiguredError extends Error {
   constructor() {

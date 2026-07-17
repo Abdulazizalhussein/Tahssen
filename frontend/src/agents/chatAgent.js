@@ -5,6 +5,7 @@
 // ─────────────────────────────────────────────────────────────────
 
 import { apiChat } from '../api/client'
+import { computeForecast } from './recommendAgent'
 
 export async function chat(account, messages) {
   const accountData = {
@@ -16,6 +17,7 @@ export async function chat(account, messages) {
     totalFixedExpenses: account.totalFixedExpenses,
     transactions: account.transactions,
     lang: account.lang,
+    forecast: computeForecast(account), // month-end projection so advice matches the app
   }
   // Send only user/assistant turns — the backend builds the system prompt from
   // accountData (server-authoritative), so no system role crosses the wire.
