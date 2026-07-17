@@ -465,6 +465,20 @@ a {
 }
 
 /* ============================================================
+   REDUCED MOTION — respect the OS/browser preference everywhere
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ============================================================
    RTL LOGICAL PROPERTIES — never use left/right directly
    All margin/padding in components use margin-inline-*, padding-inline-*
    All absolute positioning uses inset-inline-* not left/right.

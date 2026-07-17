@@ -63,7 +63,7 @@ export default function HomePage() {
       <div className="home-header">
         <div className="home-header__text">
           <h1 className="home-greeting">
-            {userName ? `${t('greeting')}، ${userName}` : t('appName')}
+            {userName ? `${t('greeting')}${lang === 'ar' ? '،' : ','} ${userName}` : t('appName')}
           </h1>
           <p className="home-date">{today}</p>
         </div>

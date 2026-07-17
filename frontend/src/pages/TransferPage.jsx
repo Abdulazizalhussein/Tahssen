@@ -14,6 +14,7 @@ import {
   Send,
   CheckCircle2,
   Shield,
+  ShieldCheck,
   AlertTriangle,
   Check,
 } from 'lucide-react'
@@ -200,6 +201,11 @@ export default function TransferPage() {
       chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
   }, [messages, busy, step])
+
+  // ── Auto-focus the answer input when a question is waiting ──
+  useEffect(() => {
+    if (step === STEP.INTERROGATE && !busy) answerRef.current?.focus()
+  }, [step, busy, messages])
 
   // ── Reset ─────────────────────────────────────────────────
   const resetFlow = () => {
@@ -543,6 +549,7 @@ export default function TransferPage() {
       {/* ── STEP 2: Interrogation chat ── */}
       {step === STEP.INTERROGATE && (
         <div>
+          <GuardianHeader t={t} title={t('reviewingTitle')} subtitle={t('reviewingSubtitle')} />
           <SummaryChip beneficiary={beneficiary} amount={amount} formatMoney={formatMoney} t={t} />
 
           <div className="transfer-chat-body" aria-live="polite" aria-label={t('intentReview')}>
@@ -575,8 +582,8 @@ export default function TransferPage() {
 
           {busy || !assessment ? (
             <div className="transfer-assess-loading" role="status" aria-label={t('analyzing')}>
+              <GuardianHeader t={t} title={t('analyzingTransfer')} subtitle={t('analyzing')} analyzing />
               <span className="spinner" style={{ width: 36, height: 36, borderWidth: 3 }} />
-              <span>{t('analyzing')}</span>
               {error && (
                 <div className="transfer-error">
                   <ErrorBox message={error} />
@@ -634,7 +641,7 @@ export default function TransferPage() {
             disabled={!answer.trim() || busy}
             aria-label={t('send')}
           >
-            <Send size={18} color="var(--bg)" aria-hidden="true" />
+            <Send size={18} color="var(--bg)" aria-hidden="true" style={{ transform: isRTL ? 'scaleX(-1)' : 'none' }} />
           </button>
         </div>
       )}
@@ -688,13 +695,35 @@ function SummaryChip({ beneficiary, amount, formatMoney, t }) {
   )
 }
 
-function ChatLine({ role, content }) {
-  const isAI = role === 'assistant'
+// Named guardian persona so the interrogation reads as a security review,
+// not a generic chat.
+function GuardianHeader({ t, title, subtitle, analyzing = false }) {
   return (
-    <div className={`transfer-chat-line ${isAI ? 'ai' : 'user'}`}>
-      {content}
+    <div className={`transfer-guardian${analyzing ? ' analyzing' : ''}`}>
+      <span className="transfer-guardian-avatar" aria-hidden="true">
+        <ShieldCheck size={20} color="var(--gold)" />
+      </span>
+      <div className="transfer-guardian-text">
+        <span className="transfer-guardian-title">{title}</span>
+        <span className="transfer-guardian-sub">{subtitle}</span>
+      </div>
     </div>
   )
+}
+
+function ChatLine({ role, content }) {
+  const isAI = role === 'assistant'
+  if (isAI) {
+    return (
+      <div className="transfer-chat-row ai">
+        <span className="transfer-chat-avatar" aria-hidden="true">
+          <ShieldCheck size={15} color="var(--gold)" />
+        </span>
+        <div className="transfer-chat-line ai">{content}</div>
+      </div>
+    )
+  }
+  return <div className="transfer-chat-line user">{content}</div>
 }
 
 function AssessmentView({ assessment, t, isRTL, onConfirm, onBlock, busy }) {
