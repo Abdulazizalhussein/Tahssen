@@ -3,8 +3,12 @@
 // ─────────────────────────────────────────────────────────────────
 
 import { apiAnalyze } from '../api/client'
+import { STRINGS } from '../i18n'
+
+const L = (lang, key) => STRINGS[lang]?.[key] ?? STRINGS.ar?.[key] ?? key
 
 export async function analyzeTransfer(params) {
+  const lang = params?.lang || 'ar'
   try {
     const result = await apiAnalyze(params)
     // Normalise fields for consistency
@@ -22,7 +26,7 @@ export async function analyzeTransfer(params) {
       riskScore: 50,
       riskLevel: 'medium',
       recommendation: 'warn',
-      reasoning: 'تعذّر التحليل — تصرف بحذر.',
+      reasoning: L(lang, 'reasonAnalysisFailed'),
       redFlags: [],
       predictions: [],
     }

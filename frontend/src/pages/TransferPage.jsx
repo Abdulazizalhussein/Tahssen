@@ -153,6 +153,7 @@ export default function TransferPage() {
     formatMoney,
     t,
     isRTL,
+    lang,
   } = account
 
   // ── Step state ────────────────────────────────────────────
@@ -172,6 +173,7 @@ export default function TransferPage() {
   // ── Assessment + result ───────────────────────────────────
   const [assessment, setAssessment] = useState(null)
   const [result, setResult] = useState(null)  // {blocked}
+  const [committing, setCommitting] = useState(false)  // guards confirm/block against double-submit
 
   // Scroll-to-bottom ref for chat
   const scrollRef = useRef(null)
@@ -246,6 +248,7 @@ export default function TransferPage() {
           monthlySpent,
           monthlyBudget,
           isPersonallyKnown,
+          lang,
         })
         setAssessment(res)
       } catch (e) {
@@ -254,7 +257,7 @@ export default function TransferPage() {
         setBusy(false)
       }
     },
-    [beneficiary, amount, previousTransfers, balance, monthlySpent, monthlyBudget, t]
+    [beneficiary, amount, previousTransfers, balance, monthlySpent, monthlyBudget, t, lang]
   )
 
   // ── Route a getNextQuestion result to the correct UI branch ──
@@ -287,9 +290,9 @@ export default function TransferPage() {
           riskScore: qResult.riskScore ?? 90,
           riskLevel: 'critical',
           recommendation: 'block',
-          reasoning: reasonText || 'مؤشرات احتيال مرتفعة.',
-          redFlags: ['نمط احتيال مرتفع'],
-          predictions: ['هذا النمط مطابق لعمليات احتيال موثقة'],
+          reasoning: reasonText || t('reasonHighRisk'),
+          redFlags: qResult.redFlags?.length ? qResult.redFlags : [t('flagHighRisk')],
+          predictions: qResult.predictions?.length ? qResult.predictions : [t('predHighRisk')],
         })
         setStep(STEP.ASSESS)
         return
@@ -315,6 +318,7 @@ export default function TransferPage() {
         amount: Number(amount),
         conversationHistory: [],
         previousTransfers,
+        lang,
       })
       await handleQuestionResult([], qResult)
     } catch (e) {
@@ -322,7 +326,7 @@ export default function TransferPage() {
     } finally {
       setBusy(false)
     }
-  }, [beneficiary, amount, previousTransfers, handleQuestionResult, t])
+  }, [beneficiary, amount, previousTransfers, handleQuestionResult, t, lang])
 
   // ── Send answer in chat ───────────────────────────────────
   const sendAnswer = useCallback(async () => {
@@ -339,6 +343,7 @@ export default function TransferPage() {
         amount: Number(amount),
         conversationHistory: history,
         previousTransfers,
+        lang,
       })
       await handleQuestionResult(history, qResult)
     } catch (e) {
@@ -346,37 +351,49 @@ export default function TransferPage() {
     } finally {
       setBusy(false)
     }
-  }, [answer, busy, messages, beneficiary, amount, previousTransfers, handleQuestionResult, t])
+  }, [answer, busy, messages, beneficiary, amount, previousTransfers, handleQuestionResult, t, lang])
 
   // ── Confirm transfer ──────────────────────────────────────
   const confirm = async () => {
-    const payload = {
-      beneficiary,
-      iban,
-      amount: Number(amount),
-      reason: messages.find((m) => m.role === 'user')?.content || '',
-      riskScore: assessment?.riskScore ?? 0,
-      riskLevel: assessment?.riskLevel ?? 'low',
+    if (committing) return           // guard against double-submit (duplicate tx)
+    setCommitting(true)
+    try {
+      const payload = {
+        beneficiary,
+        iban,
+        amount: Number(amount),
+        reason: messages.find((m) => m.role === 'user')?.content || '',
+        riskScore: assessment?.riskScore ?? 0,
+        riskLevel: assessment?.riskLevel ?? 'low',
+      }
+      await executeTransfer(payload)
+      setResult({ blocked: false })
+      setStep(STEP.RESULT)
+    } finally {
+      setCommitting(false)
     }
-    await executeTransfer(payload)
-    setResult({ blocked: false })
-    setStep(STEP.RESULT)
   }
 
   // ── Block transfer ────────────────────────────────────────
   const block = async () => {
-    const payload = {
-      beneficiary,
-      iban,
-      amount: Number(amount),
-      reason: messages.find((m) => m.role === 'user')?.content || '',
-      reasoning: assessment?.reasoning || (assessment?.redFlags && assessment.redFlags[0]) || '',
-      riskScore: assessment?.riskScore ?? 0,
-      riskLevel: assessment?.riskLevel ?? 'low',
+    if (committing) return
+    setCommitting(true)
+    try {
+      const payload = {
+        beneficiary,
+        iban,
+        amount: Number(amount),
+        reason: messages.find((m) => m.role === 'user')?.content || '',
+        reasoning: assessment?.reasoning || (assessment?.redFlags && assessment.redFlags[0]) || '',
+        riskScore: assessment?.riskScore ?? 0,
+        riskLevel: assessment?.riskLevel ?? 'low',
+      }
+      await blockTransfer(payload)
+      setResult({ blocked: true })
+      setStep(STEP.RESULT)
+    } finally {
+      setCommitting(false)
     }
-    await blockTransfer(payload)
-    setResult({ blocked: true })
-    setStep(STEP.RESULT)
   }
 
   // ── Key handler for chat input ────────────────────────────
@@ -567,9 +584,9 @@ export default function TransferPage() {
               )}
             </div>
           ) : assessment.approved ? (
-            <ApprovedView kind={assessment.approvalKind} reasonKey={assessment.reasonKey} t={t} onConfirm={confirm} />
+            <ApprovedView kind={assessment.approvalKind} reasonKey={assessment.reasonKey} t={t} onConfirm={confirm} busy={committing} />
           ) : assessment.isPersonallyKnown ? (
-            <KnownPersonView t={t} onConfirm={confirm} />
+            <KnownPersonView t={t} onConfirm={confirm} busy={committing} />
           ) : (
             <AssessmentView
               assessment={assessment}
@@ -577,6 +594,7 @@ export default function TransferPage() {
               isRTL={isRTL}
               onConfirm={confirm}
               onBlock={block}
+              busy={committing}
             />
           )}
         </div>
@@ -679,7 +697,7 @@ function ChatLine({ role, content }) {
   )
 }
 
-function AssessmentView({ assessment, t, isRTL, onConfirm, onBlock }) {
+function AssessmentView({ assessment, t, isRTL, onConfirm, onBlock, busy }) {
   const band  = riskBand(assessment.riskScore)
   const color = band.color
   const label = t(band.key)
@@ -730,17 +748,17 @@ function AssessmentView({ assessment, t, isRTL, onConfirm, onBlock }) {
 
       {/* Actions */}
       {safe ? (
-        <button className="transfer-safe-btn" onClick={onConfirm}>
-          <CheckCircle2 size={18} aria-hidden="true" />
+        <button className="transfer-safe-btn" onClick={onConfirm} disabled={busy}>
+          {busy ? <span className="spinner" /> : <CheckCircle2 size={18} aria-hidden="true" />}
           {t('safeTransfer')} · {t('confirmTransfer')}
         </button>
       ) : (
         <div className="transfer-risky-actions">
-          <button className="transfer-block-btn" onClick={onBlock}>
+          <button className="transfer-block-btn" onClick={onBlock} disabled={busy}>
             <Shield size={18} aria-hidden="true" />
             {t('cancelTransfer')}
           </button>
-          <button className="transfer-risky-btn" onClick={onConfirm}>
+          <button className="transfer-risky-btn" onClick={onConfirm} disabled={busy}>
             {t('confirmDespiteRisk')}
           </button>
         </div>
@@ -749,27 +767,28 @@ function AssessmentView({ assessment, t, isRTL, onConfirm, onBlock }) {
   )
 }
 
-function KnownPersonView({ t, onConfirm }) {
+function KnownPersonView({ t, onConfirm, busy }) {
   return (
     <div className="transfer-known-wrap">
       <div className="transfer-known-icon success">
         <CheckCircle2 size={48} color="var(--success)" aria-hidden="true" />
       </div>
       <p className="transfer-known-title">{t('safeKnownPerson')}</p>
-      <button className="transfer-safe-btn" style={{ width: '100%' }} onClick={onConfirm}>
-        <CheckCircle2 size={18} aria-hidden="true" />
+      <button className="transfer-safe-btn" style={{ width: '100%' }} onClick={onConfirm} disabled={busy}>
+        {busy ? <span className="spinner" /> : <CheckCircle2 size={18} aria-hidden="true" />}
         {t('confirmTransfer')}
       </button>
     </div>
   )
 }
 
-function ApprovedView({ kind, reasonKey, t, onConfirm }) {
+function ApprovedView({ kind, reasonKey, t, onConfirm, busy }) {
   const title = kind === 'guarantee' ? t('verifiedInvoice') : t('approvedTitle')
-  const subtitle =
-    kind === 'skip'
-      ? t(reasonKey === 'knownService' ? 'approvedKnownService' : 'approvedLowAmount')
-      : ''
+  const skipSubtitleKey =
+    reasonKey === 'knownBeneficiary' ? 'reasonKnownBeneficiary'
+    : reasonKey === 'knownService' ? 'approvedKnownService'
+    : 'approvedLowAmount'
+  const subtitle = kind === 'skip' ? t(skipSubtitleKey) : ''
 
   return (
     <div className="transfer-known-wrap">
@@ -780,8 +799,8 @@ function ApprovedView({ kind, reasonKey, t, onConfirm }) {
       {subtitle ? (
         <p className="transfer-approved-subtitle">{subtitle}</p>
       ) : null}
-      <button className="transfer-safe-btn teal" style={{ width: '100%' }} onClick={onConfirm}>
-        <CheckCircle2 size={18} aria-hidden="true" />
+      <button className="transfer-safe-btn teal" style={{ width: '100%' }} onClick={onConfirm} disabled={busy}>
+        {busy ? <span className="spinner" /> : <CheckCircle2 size={18} aria-hidden="true" />}
         {t('confirmTransfer')}
       </button>
     </div>

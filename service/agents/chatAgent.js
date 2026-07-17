@@ -15,16 +15,21 @@ export async function chat({ messages, accountData }) {
     lang = 'ar',
   } = account
 
-  const recent = transactions.slice(0, 10).map((t) => ({
-    amount: t.amount,
-    beneficiary: t.beneficiary,
-    reason: t.reason,
-    riskScore: t.riskScore,
-    blocked: t.blocked,
-    date: new Date(t.timestamp).toISOString().slice(0, 10),
+  // Bound + sanitize account data: it is client-supplied, so cap array sizes
+  // and coerce numerics (prevents prompt-size blowups and self-injection).
+  const recent = (Array.isArray(transactions) ? transactions : []).slice(0, 10).map((t) => ({
+    amount: Number(t?.amount) || 0,
+    beneficiary: String(t?.beneficiary ?? '').slice(0, 60),
+    reason: String(t?.reason ?? '').slice(0, 120),
+    riskScore: Number(t?.riskScore) || 0,
+    blocked: Boolean(t?.blocked),
+    date: t?.timestamp ? new Date(t.timestamp).toISOString().slice(0, 10) : '',
   }))
 
-  const fixedList = fixedExpenses.map((e) => `${e.name}: ${e.amount} SAR`).join(', ') || 'none'
+  const fixedList = (Array.isArray(fixedExpenses) ? fixedExpenses : [])
+    .slice(0, 30)
+    .map((e) => `${String(e?.name ?? '').slice(0, 40)}: ${Number(e?.amount) || 0} SAR`)
+    .join(', ') || 'none'
   const discretionary = monthlyIncome - totalFixedExpenses
   const remaining = monthlyIncome - totalFixedExpenses - monthlySpent
 
@@ -48,15 +53,25 @@ minus fixed commitments) rather than total balance. Keep answers concise and pra
 Do not invent transactions that are not in the data. You never execute transfers yourself;
 you only advise.`
 
-  const response = await client.chat.completions.create({
-    model: MODEL,
-    temperature: 0.6,
-    max_tokens: 500,
-    messages: [
-      { role: 'system', content: sysPrompt },
-      ...messages.map((m) => ({ role: m.role, content: m.content })),
-    ],
-  })
+  // Only user/assistant turns reach the model; the system prompt is ours.
+  const turns = (Array.isArray(messages) ? messages : [])
+    .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
+    .map((m) => ({ role: m.role, content: m.content }))
 
-  return response.choices[0].message.content.trim()
+  try {
+    const response = await client.chat.completions.create({
+      model: MODEL,
+      temperature: 0.6,
+      max_tokens: 500,
+      messages: [{ role: 'system', content: sysPrompt }, ...turns],
+    })
+    const content = response.choices?.[0]?.message?.content
+    if (content && content.trim()) return content.trim()
+  } catch (err) {
+    console.error('[chatAgent] chat failed:', err?.message || err)
+  }
+  // Degrade gracefully (like the other agents) instead of throwing a 500.
+  return lang === 'en'
+    ? 'Sorry — I could not generate a reply right now. Please try again.'
+    : 'عذراً، تعذّر إنشاء رد الآن. يرجى المحاولة مرة أخرى.'
 }

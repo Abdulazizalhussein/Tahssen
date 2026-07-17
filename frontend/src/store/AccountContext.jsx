@@ -233,6 +233,8 @@ export function AccountProvider({ children }) {
     async (transfer) => {
       if (!userId) return null
       const amount = Number(transfer.amount) || 0
+      // Never let a completed transfer overdraw the demo account.
+      if (amount <= 0 || amount > balance) return null
       const payload = {
         type: 'transfer',
         amount,

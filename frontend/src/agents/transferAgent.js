@@ -4,6 +4,10 @@
 // ─────────────────────────────────────────────────────────────────
 
 import { apiInterrogate } from '../api/client'
+import { STRINGS } from '../i18n'
+
+// Localize an instant-signal string by key, falling back to Arabic then the key.
+const L = (lang, key) => STRINGS[lang]?.[key] ?? STRINGS.ar?.[key] ?? key
 
 // ── Instant-signal lists (no AI needed for these) ────────────────
 
@@ -41,6 +45,13 @@ const SOCIAL_STRANGERS = [
   'شخص من النت','من الانترنت','من السوشيال',
 ]
 
+// Gift-card / voucher scams — small amounts, so never gate behind a threshold.
+const GIFT_CARD_FRAUD = [
+  'ايتونز','آيتونز','اي تونز','itunes','قوقل بلاي','جوجل بلاي','google play',
+  'بطاقة هدية','بطاقات هدايا','بطاقة قوقل','بطاقة جوجل','رصيد بطاقة',
+  'ستيم','steam','بلايستيشن','psn','أرسل الأرقام','ارسل الارقام','ارقام البطاقة','ارقام الكروت',
+]
+
 // ── Helpers ───────────────────────────────────────────────────────
 
 function hit(text, list) {
@@ -66,46 +77,57 @@ function classifyBeneficiary(name) {
 
 // ── Main export ───────────────────────────────────────────────────
 
-export async function getNextQuestion({ beneficiary, amount, conversationHistory, previousTransfers }) {
+export async function getNextQuestion({ beneficiary, amount, conversationHistory, previousTransfers, lang = 'ar' }) {
   const allAnswers = conversationHistory.filter((m) => m.role === 'user').map((m) => m.content).join(' ')
   const qCount = conversationHistory.filter((m) => m.role === 'assistant').length
   const bType = classifyBeneficiary(beneficiary || '')
 
   // ── 1. INSTANT APPROVE: prior relationship ─────────────────────
   if (previousTransfers?.length > 0) {
-    return { done: true, skipRisk: true, riskScore: 5,
-      reason: `مستفيد سبق التحويل إليه (${previousTransfers.length} مرة)` }
+    return { done: true, skipRisk: true, riskScore: 5, reasonKey: 'knownBeneficiary',
+      reason: `${L(lang, 'reasonKnownBeneficiary')} (${previousTransfers.length}×)` }
   }
 
   // ── 2. INSTANT SIGNALS (after ≥1 answer) ──────────────────────
+  // Fraud signals first — a family word must not mask a scam narrative.
   if (qCount >= 1) {
-    if (hit(allAnswers, KNOWN_PERSON_SIGNALS))
-      return { done: true, isPersonallyKnown: true }
+    if (hit(allAnswers, GIFT_CARD_FRAUD))
+      return { done: true, forceHighRisk: true, riskScore: 96,
+        reason: L(lang, 'reasonGiftCard'),
+        redFlags: [L(lang, 'flagGiftCard')],
+        predictions: [L(lang, 'predGiftCard')] }
 
     if (hit(allAnswers, CRYPTO_FRAUD))
       return { done: true, forceHighRisk: true, riskScore: 97,
-        reason: 'وعود استثمار أو عملات رقمية — احتيال شائع' }
+        reason: L(lang, 'reasonCrypto'),
+        redFlags: [L(lang, 'flagCrypto')],
+        predictions: [L(lang, 'predCrypto')] }
 
-    if (hit(allAnswers, SOCIAL_STRANGERS) && amount > 300)
+    if (hit(allAnswers, SOCIAL_STRANGERS))
       return { done: true, forceHighRisk: true, riskScore: 88,
-        reason: 'شخص تعرفت عليه عبر وسائل التواصل الاجتماعي' }
+        reason: L(lang, 'reasonSocialStranger'),
+        redFlags: [L(lang, 'flagSocialStranger')],
+        predictions: [L(lang, 'predSocialStranger')] }
+
+    if (hit(allAnswers, KNOWN_PERSON_SIGNALS))
+      return { done: true, isPersonallyKnown: true }
   }
 
   // ── 3. TINY AMOUNT ─────────────────────────────────────────────
   if (amount < 300) {
-    if (qCount === 0) return { done: false, question: 'ما سبب هذه الحوالة؟' }
-    return { done: true, skipRisk: true, riskScore: 10, reason: 'مبلغ بسيط' }
+    if (qCount === 0) return { done: false, question: L(lang, 'qWhyTransfer') }
+    return { done: true, skipRisk: true, riskScore: 10, reasonKey: 'lowAmount', reason: L(lang, 'reasonTinyAmount') }
   }
 
   // ── 4. HARD LIMIT ──────────────────────────────────────────────
   if (qCount >= 4) return { done: true }
 
   // ── 5. Q1: always purpose ──────────────────────────────────────
-  if (qCount === 0) return { done: false, question: 'ما سبب هذه الحوالة؟' }
+  if (qCount === 0) return { done: false, question: L(lang, 'qWhyTransfer') }
 
   // ── 6. Q2-Q4: AI-managed conversation ─────────────────────────
   try {
-    return await apiInterrogate({ beneficiary, amount, conversationHistory, previousTransfers })
+    return await apiInterrogate({ beneficiary, amount, conversationHistory, previousTransfers, lang })
   } catch {
     return { done: true } // fallback to full analysis on network error
   }

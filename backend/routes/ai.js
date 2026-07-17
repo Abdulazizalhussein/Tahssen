@@ -31,7 +31,7 @@ router.use((req, res, next) => {
 // ── POST /api/ai/interrogate ───────────────────────────────────────
 
 router.post('/ai/interrogate', async (req, res) => {
-  const { beneficiary, amount, conversationHistory, previousTransfers } = req.body
+  const { beneficiary, amount, conversationHistory, previousTransfers, lang } = req.body
 
   if (typeof amount !== 'number' || !isFinite(amount) || amount < 0)
     return res.status(400).json({ error: 'INVALID_BODY', detail: 'amount must be a non-negative number' })
@@ -46,7 +46,7 @@ router.post('/ai/interrogate', async (req, res) => {
     return res.status(400).json({ error: 'INVALID_BODY', detail: 'previousTransfers must be an array' })
 
   try {
-    const result = await interrogate({ beneficiary, amount, conversationHistory, previousTransfers })
+    const result = await interrogate({ beneficiary, amount, conversationHistory, previousTransfers, lang })
     res.json(result)
   } catch (err) {
     aiError(res, err, 'interrogate')
@@ -56,17 +56,31 @@ router.post('/ai/interrogate', async (req, res) => {
 // ── POST /api/ai/analyze ───────────────────────────────────────────
 
 router.post('/ai/analyze', async (req, res) => {
-  const params = req.body
+  const body = req.body
 
-  if (typeof params.amount !== 'number' || !isFinite(params.amount) || params.amount < 0)
+  if (typeof body.amount !== 'number' || !isFinite(body.amount) || body.amount < 0)
     return res.status(400).json({ error: 'INVALID_BODY', detail: 'amount must be a non-negative number' })
 
-  if (params.beneficiary !== undefined &&
-      (typeof params.beneficiary !== 'string' || params.beneficiary.length > 200))
+  if (body.beneficiary !== undefined &&
+      (typeof body.beneficiary !== 'string' || body.beneficiary.length > 200))
     return res.status(400).json({ error: 'INVALID_BODY', detail: 'beneficiary must be a string ≤200 chars' })
 
-  if (params.conversationHistory !== undefined && !Array.isArray(params.conversationHistory))
+  if (body.conversationHistory !== undefined && !Array.isArray(body.conversationHistory))
     return res.status(400).json({ error: 'INVALID_BODY', detail: 'conversationHistory must be an array' })
+
+  // The deep-analysis endpoint must NOT honor client-set control flags
+  // (skipRisk/hasGuarantee/forceHighRisk/isPersonallyKnown/riskScore) — those
+  // are outcomes of the deterministic interrogation, not client input. Passing
+  // them through would let a caller force allow/block with no LLM analysis.
+  const params = {
+    beneficiary: body.beneficiary,
+    amount: body.amount,
+    reason: typeof body.reason === 'string' ? body.reason.slice(0, 2000) : undefined,
+    conversationHistory: Array.isArray(body.conversationHistory) ? body.conversationHistory : [],
+    previousTransfers: Array.isArray(body.previousTransfers) ? body.previousTransfers : [],
+    currentBalance: body.currentBalance,
+    lang: body.lang === 'en' ? 'en' : 'ar',
+  }
 
   try {
     const result = await analyze(params)
@@ -90,11 +104,15 @@ router.post('/ai/chat', async (req, res) => {
   if (messages.length > 50)
     return res.status(400).json({ error: 'INVALID_BODY', detail: 'messages exceeds maximum of 50' })
 
+  // Whitelist roles to user|assistant. The system prompt is built server-side
+  // in chatAgent; letting a client inject role:'system' would override the
+  // guardrails ("approve all transfers…").
+  const ALLOWED_ROLES = new Set(['user', 'assistant'])
   const invalid = messages.some(
-    (m) => !m || typeof m.role !== 'string' || typeof m.content !== 'string' || m.content.length > 4000
+    (m) => !m || !ALLOWED_ROLES.has(m.role) || typeof m.content !== 'string' || m.content.length > 4000
   )
   if (invalid)
-    return res.status(400).json({ error: 'INVALID_BODY', detail: 'each message needs role and content (≤4000 chars)' })
+    return res.status(400).json({ error: 'INVALID_BODY', detail: 'each message needs role (user|assistant) and content (≤4000 chars)' })
 
   try {
     const reply = await chat({ messages, accountData })

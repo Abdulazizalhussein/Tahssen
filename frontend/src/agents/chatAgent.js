@@ -6,50 +6,6 @@
 
 import { apiChat } from '../api/client'
 
-function systemPrompt({
-  balance,
-  monthlyBudget,
-  monthlySpent,
-  monthlyIncome = 0,
-  fixedExpenses = [],
-  totalFixedExpenses = 0,
-  transactions,
-  lang,
-}) {
-  const recent = transactions.slice(0, 10).map((t) => ({
-    amount: t.amount,
-    beneficiary: t.beneficiary,
-    reason: t.reason,
-    riskScore: t.riskScore,
-    blocked: t.blocked,
-    date: new Date(t.timestamp).toISOString().slice(0, 10),
-  }))
-
-  const fixedList = fixedExpenses.map((e) => `${e.name}: ${e.amount} SAR`).join(', ') || 'none'
-  const discretionary = monthlyIncome - totalFixedExpenses
-  const remaining = monthlyIncome - totalFixedExpenses - monthlySpent
-
-  return `You are Tahseen, an AI financial protection agent for Alinma Bank.
-You have access to the user's live account data:
-- Current balance: ${balance} SAR
-- Monthly income: ${monthlyIncome} SAR
-- Fixed expenses: ${fixedList}
-- Total fixed commitments: ${totalFixedExpenses} SAR
-- Available discretionary budget: ${discretionary} SAR
-- Already spent this month: ${monthlySpent} SAR
-- Remaining discretionary budget: ${remaining} SAR
-- Monthly budget: ${monthlyBudget} SAR
-- Recent transactions (newest first): ${JSON.stringify(recent)}
-- Today's date: ${new Date().toISOString().slice(0, 10)}
-
-Answer ${lang === 'en' ? 'in English' : 'in Arabic primarily'}. Be specific and use the
-actual numbers above. Give concrete predictions, warnings, and financial advice based on
-their real data. When income is set, anchor advice on the discretionary budget (income
-minus fixed commitments) rather than total balance. Keep answers concise and practical.
-Do not invent transactions that are not in the data. You never execute transfers yourself;
-you only advise.`
-}
-
 export async function chat(account, messages) {
   const accountData = {
     balance: account.balance,
@@ -61,12 +17,17 @@ export async function chat(account, messages) {
     transactions: account.transactions,
     lang: account.lang,
   }
-  const withSystem = [
-    { role: 'system', content: systemPrompt(account) },
-    ...messages.map((m) => ({ role: m.role, content: m.content })),
-  ]
-  return apiChat(withSystem, accountData)
+  // Send only user/assistant turns — the backend builds the system prompt from
+  // accountData (server-authoritative), so no system role crosses the wire.
+  const turns = messages
+    .filter((m) => m.role === 'user' || m.role === 'assistant')
+    .map((m) => ({ role: m.role, content: m.content }))
+  return apiChat(turns, accountData)
 }
+
+// Locale-aware integer formatting for the computed insight strings.
+const fmt = (n, lang) => Math.round(n).toLocaleString(lang === 'en' ? 'en-US' : 'ar-SA')
+const CUR = (lang) => (lang === 'en' ? 'SAR' : 'ر.س')
 
 export async function generateInsights(account) {
   const {
@@ -76,7 +37,9 @@ export async function generateInsights(account) {
     monthlyIncome = 0,
     totalFixedExpenses = 0,
     transactions,
+    lang = 'ar',
   } = account
+  const en = lang === 'en'
   const stats = computeStats(transactions)
 
   // Local health score: penalise blocked txs and overspend
@@ -95,30 +58,37 @@ export async function generateInsights(account) {
   const predictedMonthEndBalance = balance - dailyRate * daysLeft
 
   const insights = []
-  if (spendRatio > 0.8) insights.push(`أنفقت ${Math.round(spendRatio * 100)}% من ميزانيتك الشهرية`)
-  if (stats.blockedCount > 0) insights.push(`تم إيقاف ${stats.blockedCount} معاملة مشبوهة`)
-  if (remaining > 0 && monthlyIncome > 0) insights.push(`المتبقي من الدخل التقديري: ${Math.round(remaining)} ر.س`)
+  if (spendRatio > 0.8)
+    insights.push(en ? `You've spent ${Math.round(spendRatio * 100)}% of your monthly budget` : `أنفقت ${Math.round(spendRatio * 100)}% من ميزانيتك الشهرية`)
+  if (stats.blockedCount > 0)
+    insights.push(en ? `${stats.blockedCount} suspicious transaction(s) were blocked` : `تم إيقاف ${stats.blockedCount} معاملة مشبوهة`)
+  if (remaining > 0 && monthlyIncome > 0)
+    insights.push(en ? `Remaining discretionary income: ${fmt(remaining, lang)} ${CUR(lang)}` : `المتبقي من الدخل التقديري: ${fmt(remaining, lang)} ${CUR(lang)}`)
 
   return {
     healthScore,
     insights,
     monthEndPrediction: predictedMonthEndBalance > 0
-      ? `يُتوقع رصيدك نهاية الشهر: ${Math.round(predictedMonthEndBalance).toLocaleString('ar-SA')} ر.س`
-      : 'يُتوقع انخفاض الرصيد نهاية الشهر — راجع إنفاقك',
+      ? (en ? `Projected month-end balance: ${fmt(predictedMonthEndBalance, lang)} ${CUR(lang)}` : `يُتوقع رصيدك نهاية الشهر: ${fmt(predictedMonthEndBalance, lang)} ${CUR(lang)}`)
+      : (en ? 'Your balance is projected to drop by month-end — review your spending' : 'يُتوقع انخفاض الرصيد نهاية الشهر — راجع إنفاقك'),
     predictedMonthEndBalance,
     stats,
   }
 }
 
 export async function accountStatusLine(account) {
-  const { balance, monthlyBudget, monthlySpent, transactions } = account
+  const { balance, monthlyBudget, monthlySpent, transactions, lang = 'ar' } = account
+  const en = lang === 'en'
   const blockedCount = transactions.filter((t) => t.blocked).length
   const spendRatio = monthlyBudget > 0 ? monthlySpent / monthlyBudget : 0
 
-  if (blockedCount > 0) return `تم إيقاف ${blockedCount} معاملة مشبوهة هذا الشهر`
-  if (spendRatio > 0.9) return `تجاوزت 90% من الميزانية — رصيدك ${balance.toLocaleString('ar-SA')} ر.س`
-  if (spendRatio > 0.7) return `أنفقت ${Math.round(spendRatio * 100)}% من ميزانيتك الشهرية`
-  return `رصيدك ${balance.toLocaleString('ar-SA')} ر.س — وضعك المالي مستقر`
+  if (blockedCount > 0)
+    return en ? `${blockedCount} suspicious transaction(s) blocked this month` : `تم إيقاف ${blockedCount} معاملة مشبوهة هذا الشهر`
+  if (spendRatio > 0.9)
+    return en ? `Over 90% of budget used — balance ${fmt(balance, lang)} ${CUR(lang)}` : `تجاوزت 90% من الميزانية — رصيدك ${fmt(balance, lang)} ${CUR(lang)}`
+  if (spendRatio > 0.7)
+    return en ? `You've spent ${Math.round(spendRatio * 100)}% of your monthly budget` : `أنفقت ${Math.round(spendRatio * 100)}% من ميزانيتك الشهرية`
+  return en ? `Balance ${fmt(balance, lang)} ${CUR(lang)} — your finances are stable` : `رصيدك ${fmt(balance, lang)} ${CUR(lang)} — وضعك المالي مستقر`
 }
 
 export function computeStats(transactions) {

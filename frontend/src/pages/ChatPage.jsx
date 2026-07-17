@@ -19,6 +19,12 @@ export default function ChatPage() {
   const scrollRef = useRef(null)
   const inputRef = useRef(null)
 
+  // Turn an API error into a friendly localized message (AI-not-configured → CTA).
+  const humanError = useCallback(
+    (e) => (e?.code === 'MISSING_API_KEY' ? t('aiNeedsKey') : t('error')),
+    [t]
+  )
+
   const scrollToBottom = useCallback((animated = true) => {
     if (!scrollRef.current) return
     scrollRef.current.scrollTo({
@@ -49,13 +55,13 @@ export default function ChatPage() {
         const reply = await chat(account, history)
         setMessages([...history, { role: 'assistant', content: reply }])
       } catch (e) {
-        setError(e?.message || t('error'))
+        setError(humanError(e))
       } finally {
         setBusy(false)
         requestAnimationFrame(() => scrollToBottom())
       }
     },
-    [input, busy, messages, account, t, scrollToBottom]
+    [input, busy, messages, account, t, scrollToBottom, humanError]
   )
 
   const retry = useCallback(async () => {
@@ -71,7 +77,7 @@ export default function ChatPage() {
       setBusy(false)
       requestAnimationFrame(() => scrollToBottom())
     }
-  }, [busy, messages, account, t, scrollToBottom])
+  }, [busy, messages, account, t, scrollToBottom, humanError])
 
   const handleKeyDown = useCallback(
     (e) => {
