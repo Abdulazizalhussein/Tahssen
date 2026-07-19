@@ -15,8 +15,27 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+  gap: var(--sp-3);
   margin-block-end: var(--sp-4);
 }
+
+.home-tour-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--gold-dim);
+  border: 1px solid var(--gold-border);
+  color: var(--gold);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 140ms ease, background 140ms ease;
+}
+.home-tour-btn:hover { filter: brightness(1.1); }
+.home-tour-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--gold-dim); }
 
 .home-header__text {
   display: flex;

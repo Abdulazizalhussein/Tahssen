@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Zap, Clock, ArrowUpRight, MessageCircle, BarChart2, Users, Inbox, Activity, Sparkles, CalendarDays, Network } from 'lucide-react'
+import { Zap, Clock, ArrowUpRight, MessageCircle, BarChart2, Users, Inbox, Activity, Sparkles, CalendarDays, Network, Compass } from 'lucide-react'
 import { useAccount } from '../store/AccountContext'
 import BalanceCard from '../components/BalanceCard'
 import TransactionItem from '../components/TransactionItem'
@@ -26,7 +26,7 @@ function QuickAction({ icon: Icon, label, onClick, primary }) {
 
 export default function HomePage() {
   const account = useAccount()
-  const { transactions, userName, t, isRTL, lang } = account
+  const { transactions, userName, t, isRTL, lang, replayOnboarding } = account
   const navigate = useNavigate()
   const [status, setStatus] = useState(null)
   const [loadingStatus, setLoadingStatus] = useState(false)
@@ -76,6 +76,10 @@ export default function HomePage() {
             <CalendarDays size={12} aria-hidden="true" /> {altDate}
           </p>
         </div>
+        <button className="home-tour-btn" onClick={replayOnboarding} type="button" aria-label={t('replayTour')}>
+          <Compass size={15} aria-hidden="true" />
+          <span>{t('replayTour')}</span>
+        </button>
       </div>
 
       {/* Account health status banner */}

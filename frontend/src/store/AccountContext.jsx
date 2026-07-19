@@ -76,6 +76,9 @@ export function AccountProvider({ children }) {
     setTransactions(txs)
     setBeneficiaries(bens)
     setMonthlySpent(spent)
+    // First time on this browser (register, demo, login or session restore) →
+    // run the guided services tour once. Cleared by finishOnboarding.
+    try { if (!localStorage.getItem(ONBOARDED_KEY)) setShowOnboarding(true) } catch { /* ignore */ }
     return true
   }, [])
 
@@ -102,11 +105,7 @@ export function AccountProvider({ children }) {
       if (existing) return { ok: false, error: 'nameTaken' }
       const id = await registerUser(name, password)
       await saveSession(id)
-      await loadUser(id)
-      // New account → run the services walkthrough once.
-      let onboarded = false
-      try { onboarded = !!localStorage.getItem(ONBOARDED_KEY) } catch { /* ignore */ }
-      if (!onboarded) setShowOnboarding(true)
+      await loadUser(id) // loadUser triggers the first-time tour
       return { ok: true }
     },
     [loadUser]
