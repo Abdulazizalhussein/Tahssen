@@ -13,6 +13,7 @@ import {
   Wallet,
   X,
   Edit2,
+  Compass,
 } from 'lucide-react'
 import { useAccount } from '../store/AccountContext'
 import { SectionTitle } from '../components/ui'
@@ -41,6 +42,7 @@ export default function SettingsPage() {
     balance,
     formatMoney,
     resetAccount,
+    replayOnboarding,
     logout,
     userName,
     memberSince,
@@ -385,6 +387,10 @@ export default function SettingsPage() {
       <SectionTitle icon={Info}>{t('aboutTahseen')}</SectionTitle>
       <div className="card">
         <p className="settings-about-text">{t('aboutText')}</p>
+        <button className="btn btn-ghost btn-full" onClick={replayOnboarding} style={{ marginBlockStart: 'var(--sp-3)' }}>
+          <Compass size={16} />
+          {t('replayTour')}
+        </button>
       </div>
 
       {/* Sign out */}

@@ -341,6 +341,49 @@ export async function addBeneficiary(userId, { name, iban, bank }) {
   return { id: String(id), name: trimmedName, status: 'active' }
 }
 
+// Demo beneficiaries so the protection page is "based on the beneficiaries I
+// added": the community-reported entities (risky — names+IBANs match the
+// community registry so lookupPayee flags them) PLUS clean, no-risk people.
+// Idempotent per user via a one-time flag; never re-adds a name the user has.
+const DEMO_BENEFICIARIES = [
+  // reported / risky (match store/community.js seed payees)
+  { name: 'خالد العتيبي', iban: 'SA4420000001234567891234', bank: 'مصرف الراجحي', daysAgo: 12 },
+  { name: 'متجر العروض الذهبية', iban: 'SA1130000009876543210001', bank: 'البنك الأهلي', daysAgo: 20 },
+  { name: 'أبو محمد - الدعم', iban: 'SA6620000005555444433221', bank: 'بنك البلاد', daysAgo: 6 },
+  // clean / no risk
+  { name: 'والدتي', iban: 'SA0310000012345678900011', bank: 'مصرف الإنماء', daysAgo: 90, count: 14, lastAgo: 2 },
+  { name: 'أحمد المطيري', iban: 'SA2680000022223333444455', bank: 'مصرف الراجحي', daysAgo: 45, count: 6, lastAgo: 5 },
+  { name: 'نورة السالم', iban: 'SA5750000066667777888899', bank: 'بنك الرياض', daysAgo: 33, count: 2, lastAgo: 9 },
+  { name: 'مؤسسة البركة للتجارة', iban: 'SA9010000011119999222233', bank: 'البنك السعودي الفرنسي', daysAgo: 24, count: 3, lastAgo: 4 },
+  { name: 'عبدالله الغانم', iban: 'SA1120000033334444555566', bank: 'مصرف الإنماء', daysAgo: 15, count: 1, lastAgo: 11 },
+]
+
+export async function seedDemoBeneficiaries(userId) {
+  const data = readDB()
+  const user = data.users.find((u) => u.id === userId)
+  if (!user || user.demo_beneficiaries_seeded) return
+  const now = Date.now()
+  const DAY = 86400000
+  for (const b of DEMO_BENEFICIARIES) {
+    if (data.beneficiaries.some((x) => x.user_id === userId && x.name === b.name)) continue
+    data.seq.beneficiaries += 1
+    data.beneficiaries.push({
+      id: data.seq.beneficiaries,
+      user_id: userId,
+      name: b.name,
+      iban: b.iban || '',
+      bank: b.bank || '',
+      status: 'active',
+      blocked_reason: '',
+      added_at: new Date(now - (b.daysAgo || 10) * DAY).toISOString(),
+      last_transfer_at: b.count ? new Date(now - (b.lastAgo || 3) * DAY).toISOString() : null,
+      transfer_count: b.count || 0,
+    })
+  }
+  user.demo_beneficiaries_seeded = true
+  writeDB(data)
+}
+
 export async function blockBeneficiary(userId, name, reason) {
   const data = readDB()
   const trimmedName = (name || '').trim()

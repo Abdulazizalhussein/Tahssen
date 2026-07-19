@@ -6,8 +6,9 @@
 
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, Plus, User, Ban, Unlock, Users } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Plus, Ban, Unlock, Users, ShieldCheck, ShieldAlert } from 'lucide-react'
 import { useAccount } from '../store/AccountContext'
+import { lookupPayee } from '../store/community'
 import AddBeneficiaryModal from '../components/AddBeneficiaryModal'
 import './BeneficiariesPage.css'
 
@@ -60,6 +61,8 @@ function ActiveCard({ b, t, lang }) {
   const sub = date
     ? `${t('benLastTransfer')}: ${date}${b.transferCount ? `  ×${b.transferCount}` : ''}`
     : t('benNoTransferYet')
+  // Community risk status for this payee (drives the badge).
+  const risk = lookupPayee(b.name, b.iban)
 
   return (
     <article className="ben-card-active" aria-label={b.name}>
@@ -67,7 +70,14 @@ function ActiveCard({ b, t, lang }) {
         <span className="ben-initials">{getInitials(b.name)}</span>
       </div>
       <div className="ben-card-body">
-        <div className="ben-card-name">{b.name}</div>
+        <div className="ben-card-name-row">
+          <span className="ben-card-name">{b.name}</span>
+          {risk.found ? (
+            <span className="ben-risk-badge danger"><ShieldAlert size={12} /> {t('benRiskFlag')}</span>
+          ) : (
+            <span className="ben-risk-badge safe"><ShieldCheck size={12} /> {t('benSafeFlag')}</span>
+          )}
+        </div>
         <div className="ben-card-sub">{sub}</div>
         {!!b.bank && <div className="ben-card-bank">{b.bank}</div>}
       </div>

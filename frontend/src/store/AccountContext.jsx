@@ -27,12 +27,14 @@ import {
   getTotalFixedExpenses,
   getBeneficiaries,
   addBeneficiary as addBeneficiaryDB,
+  seedDemoBeneficiaries,
   blockBeneficiary,
   unblockBeneficiary,
   updateBeneficiaryLastTransfer,
 } from './db'
 
 const LANG_KEY = 'tahseen.lang.v1'
+const ONBOARDED_KEY = 'tahseen.onboarded.v1'
 
 const AccountContext = createContext(null)
 
@@ -50,10 +52,12 @@ export function AccountProvider({ children }) {
   const [beneficiaries, setBeneficiaries] = useState([])
   const [lang, setLang] = useState('ar')
   const [isLoading, setIsLoading] = useState(true)
+  const [showOnboarding, setShowOnboarding] = useState(false)
 
   const loadUser = useCallback(async (id) => {
     const user = await getUserById(id)
     if (!user) return false
+    await seedDemoBeneficiaries(id) // ensure the demo beneficiary set (risky + clean) exists
     const [txs, spent, expenses, totalFixed, bens] = await Promise.all([
       getTransactions(id),
       getMonthlySpent(id),
@@ -99,10 +103,21 @@ export function AccountProvider({ children }) {
       const id = await registerUser(name, password)
       await saveSession(id)
       await loadUser(id)
+      // New account → run the services walkthrough once.
+      let onboarded = false
+      try { onboarded = !!localStorage.getItem(ONBOARDED_KEY) } catch { /* ignore */ }
+      if (!onboarded) setShowOnboarding(true)
       return { ok: true }
     },
     [loadUser]
   )
+
+  const finishOnboarding = useCallback(() => {
+    try { localStorage.setItem(ONBOARDED_KEY, '1') } catch { /* ignore */ }
+    setShowOnboarding(false)
+  }, [])
+
+  const replayOnboarding = useCallback(() => setShowOnboarding(true), [])
 
   const login = useCallback(
     async (name, password) => {
@@ -337,6 +352,9 @@ export function AccountProvider({ children }) {
       isLoading,
       isAuthed: !!userId,
       isRTL: lang === 'ar',
+      showOnboarding,
+      finishOnboarding,
+      replayOnboarding,
       register,
       login,
       logout,
@@ -371,6 +389,9 @@ export function AccountProvider({ children }) {
       beneficiaries,
       lang,
       isLoading,
+      showOnboarding,
+      finishOnboarding,
+      replayOnboarding,
       register,
       login,
       logout,

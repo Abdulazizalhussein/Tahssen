@@ -108,6 +108,16 @@ const svcBase = new URL('../service/agents/', import.meta.url)
   check('community', 'graph victim carries complaint + amount', !!gVictim?.reason && gVictim.amount > 0)
   const gRing = g.nodes.find((n) => n.role === 'ring')
   check('community', 'graph ring node carries explanation note', !!gRing?.note)
+  // classifyBeneficiaries: the user's own payees split into risky vs safe.
+  const cls = c.classifyBeneficiaries([
+    { id: '1', name: 'خالد العتيبي', status: 'active' }, // seed-reported → risky
+    { id: '2', name: 'أحمد المطيري', status: 'active' }, // clean → safe
+    { id: '3', name: 'شخص محظور', status: 'blocked' },   // blocked → risky
+  ])
+  check('community', 'classifyBeneficiaries flags reported + blocked as risky, clean as safe',
+    cls.risky.length === 2 && cls.safe.length === 1 &&
+    cls.risky.some((r) => r.beneficiary.name === 'خالد العتيبي' && r.lookup.found) &&
+    cls.safe[0].name === 'أحمد المطيري')
 }
 
 // ── 2b. In-app assistant app-guide (RAG + intent router) ────────────

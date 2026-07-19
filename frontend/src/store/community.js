@@ -157,6 +157,24 @@ export function lookupPayee(name, iban) {
   return { found: false }
 }
 
+/**
+ * Split the user's own beneficiaries into community-flagged (risky) and clean
+ * (safe) groups, so the protection page can be built FROM the beneficiaries the
+ * user added. A beneficiary is risky if it's directly reported, linked to a
+ * reported account (mule), or the user has blocked it.
+ */
+export function classifyBeneficiaries(beneficiaries = []) {
+  const risky = []
+  const safe = []
+  for (const b of beneficiaries) {
+    if (!b) continue
+    const lookup = lookupPayee(b.name, b.iban)
+    if (lookup.found || b.status === 'blocked') risky.push({ beneficiary: b, lookup })
+    else safe.push(b)
+  }
+  return { risky, safe }
+}
+
 /** Add or reinforce a report. Returns the updated/created network. */
 export function reportFraud({ payee, iban, category = 'other', reason = '', amount = 0, reporterName = 'أنت' }) {
   const list = loadUser()

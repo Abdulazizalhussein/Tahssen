@@ -1,30 +1,25 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useMemo } from 'react'
 import { useLocation } from 'react-router-dom'
-import { ShieldCheck, Users, TriangleAlert, CalendarClock, Plus, Network, ChevronDown, Info } from 'lucide-react'
+import { ShieldCheck, ShieldAlert, Users, TriangleAlert, Plus, Network, ChevronDown, Info } from 'lucide-react'
 import { useAccount } from '../store/AccountContext'
 import { SectionTitle } from '../components/ui'
 import FraudGraph from '../components/FraudGraph'
 import ReportFraudModal from '../components/ReportFraudModal'
-import { getNetworks, communityStats, networkReasons } from '../store/community'
+import { classifyBeneficiaries, networkReasons } from '../store/community'
 import './CommunityPage.css'
 
 export default function CommunityPage() {
-  const { t, lang } = useAccount()
+  const { t, lang, beneficiaries } = useAccount()
   const location = useLocation()
   const [tick, setTick] = useState(0) // bump to re-read the registry after a report
   const [modal, setModal] = useState(false)
   const [expanded, setExpanded] = useState(null)
 
-  const networks = getNetworks()
-  const stats = communityStats()
+  // The protection view is built FROM the beneficiaries the user added.
+  const { risky, safe } = useMemo(() => classifyBeneficiaries(beneficiaries), [beneficiaries, tick])
 
-  // Support deep-link prefill from the transfer "report" action.
   const prefill = location.state?.reportPrefill
-
-  const onReported = useCallback((net) => {
-    setTick((x) => x + 1)
-    if (net?.id) setExpanded(net.id)
-  }, [])
+  const onReported = useCallback(() => setTick((x) => x + 1), [])
 
   return (
     <div className="page-scroll community-page" key={tick}>
@@ -32,38 +27,52 @@ export default function CommunityPage() {
         <span className="community-head-icon"><ShieldCheck size={22} color="var(--gold)" /></span>
         <div>
           <h1 className="community-title">{t('communityTitle')}</h1>
-          <p className="community-intro">{t('communityIntro')}</p>
+          <p className="community-intro">{t('communityIntroMine')}</p>
         </div>
       </div>
 
-      {/* Stats — informational for the end user, no money figures */}
+      {/* Stats — a snapshot of YOUR beneficiaries' protection status */}
       <div className="community-stats">
-        <Stat icon={TriangleAlert} color="var(--danger)" value={stats.reports} label={t('communityReportsStat')} />
-        <Stat icon={CalendarClock} color="var(--teal-light)" value={stats.thisWeek} label={t('communityThisWeekStat')} />
-        <Stat icon={Users} color="var(--gold)" value={stats.victims} label={t('communityVictimsStat')} />
+        <Stat icon={Users} color="var(--gold)" value={beneficiaries.length} label={t('statBeneficiaries')} />
+        <Stat icon={TriangleAlert} color="var(--danger)" value={risky.length} label={t('statRisky')} />
+        <Stat icon={ShieldCheck} color="var(--success-bright)" value={safe.length} label={t('statSafe')} />
       </div>
 
       <button className="btn btn-danger btn-full community-report-btn" onClick={() => setModal(true)}>
         <Plus size={16} /> {t('reportFraudBtn')}
       </button>
 
-      {/* Reported payees */}
-      <SectionTitle icon={TriangleAlert}>{t('reportedPayees')}</SectionTitle>
-      {networks.length === 0 ? (
-        <div className="empty-state"><ShieldCheck size={26} /><span>{t('communityEmpty')}</span></div>
+      {beneficiaries.length === 0 ? (
+        <div className="empty-state"><ShieldCheck size={26} /><span>{t('benNoBeneficiaries')}</span></div>
       ) : (
-        <div className="community-list">
-          {networks.map((n) => (
-            <PayeeCard
-              key={n.id}
-              net={n}
-              t={t}
-              lang={lang}
-              open={expanded === n.id}
-              onToggle={() => setExpanded(expanded === n.id ? null : n.id)}
-            />
-          ))}
-        </div>
+        <>
+          {risky.length > 0 && (
+            <>
+              <SectionTitle icon={ShieldAlert}>{t('benGroupRisky')}</SectionTitle>
+              <div className="community-list">
+                {risky.map((r) => (
+                  <RiskyCard
+                    key={r.beneficiary.id}
+                    entry={r}
+                    t={t}
+                    lang={lang}
+                    open={expanded === r.beneficiary.id}
+                    onToggle={() => setExpanded(expanded === r.beneficiary.id ? null : r.beneficiary.id)}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+
+          {safe.length > 0 && (
+            <>
+              <SectionTitle icon={ShieldCheck}>{t('benGroupSafe')}</SectionTitle>
+              <div className="community-list">
+                {safe.map((b) => <SafeCard key={b.id} b={b} t={t} />)}
+              </div>
+            </>
+          )}
+        </>
       )}
 
       <p className="community-demo-note"><Info size={13} /> {t('communityDemoNote')}</p>
@@ -83,35 +92,51 @@ function Stat({ icon: Icon, color, value, label }) {
   )
 }
 
-function PayeeCard({ net, t, lang, open, onToggle }) {
-  const lastReason = networkReasons(net, lang, 1)[0] || ''
-  const when = net.daysAgo === 0 ? t('lastReportedToday') : t('lastReportedDays').replace('{n}', String(net.daysAgo))
+function RiskyCard({ entry, t, lang, open, onToggle }) {
+  const { beneficiary: b, lookup } = entry
+  const net = lookup.network
+  const kindLabel = lookup.kind === 'linked' ? t('benReportedLinked') : lookup.found ? t('benReportedDirect') : t('benBlockedLabel')
+  const lastReason = net ? networkReasons(net, lang, 1)[0] : ''
   return (
-    <div className={`payee-card${open ? ' open' : ''}`}>
-      <button className="payee-card-head" onClick={onToggle} aria-expanded={open}>
+    <div className={`payee-card risky${open ? ' open' : ''}`}>
+      <button className="payee-card-head" onClick={onToggle} aria-expanded={open} disabled={!net}>
         <span className="payee-avatar"><TriangleAlert size={18} color="var(--danger)" /></span>
         <div className="payee-info">
           <div className="payee-name-row">
-            <span className="payee-name">{net.payee}</span>
-            <span className="payee-count">{net.reportCount} {t('reportsUnit')}</span>
+            <span className="payee-name">{b.name}</span>
+            {net && <span className="payee-count">{net.reportCount} {t('reportsUnit')}</span>}
           </div>
           <div className="payee-meta">
-            <span className="payee-cat">{t(`cat_${net.category}`)}</span>
-            <span className="payee-when">· {when}</span>
-            <span className="payee-when">· {net.victims.length} {t('communityVictimsStat')}</span>
+            <span className="payee-kind danger-text">{kindLabel}</span>
+            {net && <span className="payee-when">· {t(`cat_${net.category}`)}</span>}
           </div>
           {lastReason && <p className="payee-reason">“{lastReason}”</p>}
         </div>
-        <ChevronDown size={18} className="payee-chevron" color="var(--text-muted)" />
+        {net && <ChevronDown size={18} className="payee-chevron" color="var(--text-muted)" />}
       </button>
 
-      {open && (
+      {open && net && (
         <div className="payee-graph">
           <div className="payee-graph-label"><Network size={14} color="var(--gold)" /> {t('viewNetwork')}</div>
           <p className="payee-graph-hint"><Info size={12} /> {t('graphTapHint')}</p>
           <FraudGraph network={net} />
         </div>
       )}
+    </div>
+  )
+}
+
+function SafeCard({ b, t }) {
+  return (
+    <div className="safe-card">
+      <span className="safe-avatar"><ShieldCheck size={18} color="var(--success-bright)" /></span>
+      <div className="payee-info">
+        <div className="payee-name-row"><span className="payee-name">{b.name}</span></div>
+        <div className="payee-meta">
+          <span className="safe-text">{t('benSafeState')}</span>
+          {b.bank && <span className="payee-when">· {b.bank}</span>}
+        </div>
+      </div>
     </div>
   )
 }
