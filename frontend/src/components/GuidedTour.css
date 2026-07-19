@@ -1,0 +1,96 @@
+/* ============================================================
+   Guided product tour — spotlight + bottom/top callout (RTL)
+   ============================================================ */
+
+.tour-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  /* transparent, but captures clicks so the app stays guided */
+  animation: tour-fade 200ms ease both;
+}
+@keyframes tour-fade { from { opacity: 0; } }
+
+/* full dim when a step has no target (welcome / finish) */
+.tour-dim {
+  position: absolute;
+  inset: 0;
+  background: rgba(3, 15, 25, 0.82);
+}
+
+/* the spotlight cutout — its huge box-shadow dims everything else */
+.tour-spot {
+  position: absolute;
+  border-radius: 12px;
+  box-shadow: 0 0 0 9999px rgba(3, 15, 25, 0.76);
+  border: 2px solid var(--gold);
+  pointer-events: none;
+  transition: top 320ms cubic-bezier(0.3, 0.9, 0.3, 1), left 320ms cubic-bezier(0.3, 0.9, 0.3, 1),
+              width 320ms cubic-bezier(0.3, 0.9, 0.3, 1), height 320ms cubic-bezier(0.3, 0.9, 0.3, 1);
+  animation: tour-pulse 2s ease-in-out infinite;
+}
+@keyframes tour-pulse {
+  0%, 100% { box-shadow: 0 0 0 9999px rgba(3, 15, 25, 0.76), 0 0 0 0 var(--gold-dim); }
+  50% { box-shadow: 0 0 0 9999px rgba(3, 15, 25, 0.76), 0 0 0 6px var(--gold-dim); }
+}
+
+/* ── Callout card ── */
+.tour-card {
+  position: absolute;
+  inset-inline: 0;
+  margin-inline: auto;
+  width: calc(100% - 32px);
+  max-width: 400px;
+  background: var(--bg-card);
+  border: 1px solid var(--gold-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card), 0 0 0 1px rgba(201, 162, 39, 0.15);
+  padding: var(--sp-4);
+  animation: tour-rise 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.tour-card.bottom { inset-block-end: 84px; }
+.tour-card.top { inset-block-start: 16px; }
+.tour-card.center { inset-block: 0; margin-block: auto; height: fit-content; }
+@keyframes tour-rise { from { opacity: 0; transform: translateY(8px); } }
+
+.tour-top { display: flex; align-items: center; justify-content: space-between; margin-block-end: var(--sp-2); }
+.tour-count { font-size: 11.5px; font-weight: 700; color: var(--gold); font-variant-numeric: tabular-nums; }
+.tour-skip {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; color: var(--text-muted);
+  background: none; border: none; cursor: pointer;
+}
+.tour-skip:hover { color: var(--text); }
+
+.tour-title { font-size: 16.5px; font-weight: 800; color: var(--text); line-height: 1.4; }
+.tour-body { margin-block-start: 6px; font-size: 13px; line-height: 1.65; color: var(--text-muted); }
+
+.tour-example { margin-block-start: var(--sp-3); }
+
+/* mini chat used inside a couple of steps */
+.tour-chat { display: flex; flex-direction: column; gap: 6px; }
+.tour-bubble { max-width: 92%; padding: 8px 11px; border-radius: 12px; font-size: 12px; line-height: 1.5; }
+.tour-bubble.agent { align-self: flex-start; background: var(--bg-card-light); border: 1px solid var(--border); color: var(--text); border-start-start-radius: 4px; }
+.tour-bubble.user { align-self: flex-end; background: var(--gold); color: var(--bg); font-weight: 600; border-start-end-radius: 4px; }
+.tour-verdict { margin-block-start: 2px; display: flex; align-items: center; gap: 6px; padding: 8px 11px; border-radius: 11px; font-size: 12px; font-weight: 700; line-height: 1.4; }
+.tour-verdict.danger { background: var(--danger-dim); color: var(--danger); border: 1px solid var(--danger-border); }
+.tour-verdict.safe { background: rgba(46, 204, 113, 0.14); color: var(--success-bright); border: 1px solid rgba(46, 204, 113, 0.4); }
+.tour-verdict svg { flex-shrink: 0; }
+
+/* ── Nav ── */
+.tour-nav { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); margin-block-start: var(--sp-4); }
+.tour-dots { display: flex; gap: 5px; }
+.tour-dot { width: 6px; height: 6px; border-radius: var(--radius-pill); background: var(--border-light); transition: width 200ms ease, background 200ms ease; }
+.tour-dot.on { width: 16px; background: var(--gold); }
+.tour-back, .tour-next {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 13px; font-weight: 700;
+  padding: 8px 14px; border-radius: var(--radius-pill);
+  cursor: pointer; transition: filter 140ms ease, opacity 140ms ease;
+}
+.tour-back { background: var(--bg-card-light); border: 1px solid var(--border-light); color: var(--text-muted); }
+.tour-back:hover:not(:disabled) { color: var(--text); }
+.tour-back:disabled { opacity: 0.35; cursor: default; }
+.tour-next { background: var(--gold); border: 1px solid var(--gold); color: var(--bg); }
+.tour-next:hover { filter: brightness(1.06); }
+.tour-back:focus-visible, .tour-next:focus-visible, .tour-skip:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--gold-dim); }

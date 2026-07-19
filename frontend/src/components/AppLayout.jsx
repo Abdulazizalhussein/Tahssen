@@ -9,7 +9,7 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 import { useAccount } from '../store/AccountContext'
-import Onboarding from './Onboarding'
+import GuidedTour from './GuidedTour'
 import './AppLayout.css'
 
 const NAV_ITEMS = [
@@ -25,7 +25,7 @@ export default function AppLayout() {
 
   return (
     <div className="layout-root">
-      {showOnboarding && <Onboarding onDone={finishOnboarding} />}
+      {showOnboarding && <GuidedTour onDone={finishOnboarding} />}
       {/* ---- Desktop sidebar ---- */}
       <nav className="layout-sidebar" aria-label="main navigation">
         <div className="sidebar-brand">
